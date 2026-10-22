@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { GuestReview } from '../lib/types';
+import { TamuReview } from '../lib/types';
 import { Star, ShieldCheck, Quote } from 'lucide-react';
 
 interface ReviewsSectionProps {
-  reviews: GuestReview[];
+  reviews: TamuReview[];
 }
 
 export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
@@ -15,10 +15,10 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-            Guest Testimonials
+            Ulasan Tamu
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-4">
-            Words From Our Travelers
+            Cerita dari Para Tamu
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -62,7 +62,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
                 </p>
               </div>
 
-              {/* Guest metadata */}
+              {/* Tamu metadata */}
               <div className="pt-4 border-t border-bordercolor/60 flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-forest uppercase tracking-wider">
@@ -75,7 +75,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
 
                 {rev.is_verified && (
                   <span className="flex items-center gap-1 text-[11px] text-status-success font-medium bg-forest-50 px-2 py-0.5 rounded border border-forest-100">
-                    <ShieldCheck className="w-3 h-3" /> Verified Guest
+                    <ShieldCheck className="w-3 h-3" /> Verified Tamu
                   </span>
                 )}
               </div>

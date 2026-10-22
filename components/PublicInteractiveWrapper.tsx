@@ -7,16 +7,16 @@ import {
   RestaurantMenuItem,
   Facility,
   Offer,
-  GalleryImage,
-  GuestReview,
+  GaleriImage,
+  TamuReview,
 } from '../lib/types';
-import RoomsCatalog from './RoomsCatalog';
+import KamarCatalog from './KamarCatalog';
 import RestaurantSection from './RestaurantSection';
 import FacilitiesSection from './FacilitiesSection';
 import OffersSection from './OffersSection';
-import GallerySection from './GallerySection';
+import GaleriSection from './GaleriSection';
 import ReviewsSection from './ReviewsSection';
-import ContactBookingSection from './ContactBookingSection';
+import KontakBookingSection from './KontakBookingSection';
 
 interface PublicInteractiveWrapperProps {
   roomTypes: RoomType[];
@@ -24,8 +24,8 @@ interface PublicInteractiveWrapperProps {
   menuItems: RestaurantMenuItem[];
   facilities: Facility[];
   offers: Offer[];
-  galleryImages: GalleryImage[];
-  reviews: GuestReview[];
+  galleryImages: GaleriImage[];
+  reviews: TamuReview[];
   whatsappNumber: string;
 }
 
@@ -64,7 +64,7 @@ export default function PublicInteractiveWrapper({
 
   return (
     <>
-      <RoomsCatalog
+      <KamarCatalog
         rooms={roomTypes}
         onSelectRoomForBooking={handleSelectRoomForBooking}
       />
@@ -82,11 +82,11 @@ export default function PublicInteractiveWrapper({
         onApplyPromoCode={handleApplyPromoCode}
       />
 
-      <GallerySection images={galleryImages} />
+      <GaleriSection images={galleryImages} />
 
       <ReviewsSection reviews={reviews} />
 
-      <ContactBookingSection
+      <KontakBookingSection
         roomTypes={roomTypes}
         preselectedRoomId={preselectedRoomId}
         appliedPromoCode={appliedPromoCode}

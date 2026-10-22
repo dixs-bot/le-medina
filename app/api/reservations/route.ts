@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   createAtomicReservation,
-  getReservations,
+  getReservasi,
   CreateReservationInput,
 } from '../../../lib/data/store';
 import { ReservationStatus } from '../../../lib/types';
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as ReservationStatus | null;
     const search = searchParams.get('search') || undefined;
 
-    const reservations = await getReservations({
+    const reservations = await getReservasi({
       status: status || undefined,
       search,
     });

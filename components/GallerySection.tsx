@@ -1,24 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { GalleryImage } from '../lib/types';
+import { GaleriImage } from '../lib/types';
 import { X, ChevronLeft, ChevronRight, Maximize2, Sparkles } from 'lucide-react';
 
-interface GallerySectionProps {
-  images: GalleryImage[];
+interface GaleriSectionProps {
+  images: GaleriImage[];
 }
 
-export default function GallerySection({ images }: GallerySectionProps) {
+export default function GaleriSection({ images }: GaleriSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
 
   const categories = [
     { id: 'all', label: 'All Photographs' },
     { id: 'architecture', label: 'Architecture' },
-    { id: 'suites', label: 'Suites & Salons' },
+    { id: 'suites', label: 'Kamar & Salons' },
     { id: 'dining', label: 'Fine Dining' },
     { id: 'wellness', label: 'Hammam & Pool' },
-    { id: 'experiences', label: 'Marrakech Moments' },
+    { id: 'experiences', label: 'Singkawang Moments' },
   ];
 
   const filteredImages =
@@ -59,10 +59,10 @@ export default function GallerySection({ images }: GallerySectionProps) {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
           <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-            Visual Anthology
+            Galeri Foto
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-4">
-            Moments Within the Medina
+            Momen di Hotel Le Medina
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
@@ -90,7 +90,7 @@ export default function GallerySection({ images }: GallerySectionProps) {
           ))}
         </div>
 
-        {/* Gallery Image Grid */}
+        {/* Galeri Image Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredImages.map((img, idx) => (
             <div

@@ -17,39 +17,39 @@ import {
   Tag,
 } from 'lucide-react';
 
-interface ContactBookingSectionProps {
+interface KontakBookingSectionProps {
   roomTypes: RoomType[];
   preselectedRoomId?: string;
   appliedPromoCode?: string;
   whatsappNumber: string;
 }
 
-export default function ContactBookingSection({
+export default function KontakBookingSection({
   roomTypes,
   preselectedRoomId,
   appliedPromoCode,
   whatsappNumber,
-}: ContactBookingSectionProps) {
+}: KontakBookingSectionProps) {
   // Booking Form State
   const todayStr = '2026-10-22';
   const tomorrowStr = '2026-10-24';
 
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
+  const [adults, setDewasa] = useState(2);
+  const [children, setAnak-anak] = useState(0);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState(
     preselectedRoomId || roomTypes[0]?.id || ''
   );
   const [promoCode, setPromoCode] = useState(appliedPromoCode || '');
 
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
+  const [guestName, setTamuName] = useState('');
+  const [guestEmail, setTamuEmail] = useState('');
+  const [guestPhone, setTamuPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
   // UI state
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKirimting, setIsKirimting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<Reservation | null>(null);
 
@@ -77,21 +77,21 @@ export default function ContactBookingSection({
   const discountCents = Math.round(rawSubtotalCents * discountRate);
   const estimatedTotalCents = rawSubtotalCents - discountCents;
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
+  const handleBookingKirim = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
     if (new Date(checkOut) <= new Date(checkIn)) {
-      setErrorMsg('Check-out date must be strictly after check-in date.');
+      setErrorMsg('Tanggal check-out harus setelah tanggal check-in.');
       return;
     }
 
     if (!guestName || !guestEmail || !guestPhone) {
-      setErrorMsg('Please complete your full name, email, and contact phone number.');
+      setErrorMsg('Mohon lengkapi nama, email, dan nomor telepon Anda.');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsKirimting(true);
 
     try {
       const res = await fetch('/api/reservations', {
@@ -114,14 +114,14 @@ export default function ContactBookingSection({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to complete reservation');
+        throw new Error(data.error || 'Reservasi tidak dapat diproses.');
       }
 
       setCompletedBooking(data.reservation);
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during booking creation.');
+      setErrorMsg(err.message || 'Terjadi kesalahan saat membuat reservasi.');
     } finally {
-      setIsSubmitting(false);
+      setIsKirimting(false);
     }
   };
 
@@ -133,14 +133,14 @@ export default function ContactBookingSection({
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-            Reservations & Concierge
+            Reservasi dan Layanan Tamu
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-4">
-            Reserve Your Sanctuary in Marrakech
+            Pesan Kamar Anda di Singkawang
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
-            Direct web bookings receive complimentary bespoke Moroccan breakfast, VIP arrival mint tea ceremony, and preferred choice of courtyard or garden-facing chambers.
+            Pemesanan melalui website complimentary bespoke Indonesia breakfast, VIP arrival mint tea ceremony, and preferred choice of courtyard or garden-facing chambers.
           </p>
         </div>
 
@@ -152,15 +152,15 @@ export default function ContactBookingSection({
             </div>
 
             <span className="text-xs uppercase tracking-widest text-gold-600 font-bold block mb-1">
-              Reservation Confirmed & Pending Arrival
+              Reservasi Berhasil Dikirim
             </span>
             <h3 className="font-editorial text-3xl font-bold text-forest mb-4">
-              Shukran, {completedBooking.guest_name}!
+              Terima kasih, {completedBooking.guest_name}!
             </h3>
 
             <div className="bg-forest-950 text-ivory p-6 rounded-xl border border-gold/30 mb-8 max-w-md mx-auto">
               <span className="text-xs text-ivory-300 uppercase tracking-widest block mb-1">
-                Your Confirmation Code
+                Kode Konfirmasi Anda
               </span>
               <span className="font-mono text-3xl font-bold text-gold tracking-widest block">
                 {completedBooking.reservation_code}
@@ -218,7 +218,7 @@ export default function ContactBookingSection({
         ) : (
           /* Main 2-Column Booking Engine Form */
           <div className="max-w-5xl mx-auto bg-ivory rounded-2xl shadow-luxury-lg border border-bordercolor overflow-hidden">
-            <form onSubmit={handleBookingSubmit} className="p-6 sm:p-10">
+            <form onKirim={handleBookingKirim} className="p-6 sm:p-10">
               {errorMsg && (
                 <div className="mb-6 p-4 rounded-lg bg-red-50 border border-status-error/30 text-status-error text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -262,31 +262,31 @@ export default function ContactBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Adults (12+ yrs)
+                      Dewasa (12+ yrs)
                     </label>
                     <select
                       value={adults}
-                      onChange={(e) => setAdults(Number(e.target.value))}
+                      onChange={(e) => setDewasa(Number(e.target.value))}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                     >
                       <option value={1}>1 Adult</option>
-                      <option value={2}>2 Adults</option>
-                      <option value={3}>3 Adults</option>
+                      <option value={2}>2 Dewasa</option>
+                      <option value={3}>3 Dewasa</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Children (0-11 yrs)
+                      Anak-anak (0-11 yrs)
                     </label>
                     <select
                       value={children}
-                      onChange={(e) => setChildren(Number(e.target.value))}
+                      onChange={(e) => setAnak-anak(Number(e.target.value))}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                     >
-                      <option value={0}>0 Children</option>
+                      <option value={0}>0 Anak-anak</option>
                       <option value={1}>1 Child</option>
-                      <option value={2}>2 Children</option>
+                      <option value={2}>2 Anak-anak</option>
                     </select>
                   </div>
                 </div>
@@ -336,23 +336,23 @@ export default function ContactBookingSection({
                 </div>
               </div>
 
-              {/* Step 3: Guest Contact Information & Special Requests */}
+              {/* Step 3: Tamu Kontak Information & Permintaan Khusus */}
               <div className="mb-8">
                 <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
                   <Users className="w-5 h-5 text-gold" />
-                  <span>3. Guest Contact & Special Requests</span>
+                  <span>3. Tamu Kontak & Permintaan Khusus</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Full Name *
+                      Nama Lengkap *
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. Eleanor Vance"
                       value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
+                      onChange={(e) => setTamuName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                       required
                     />
@@ -360,13 +360,13 @@ export default function ContactBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Email Address *
+                      Alamat Email *
                     </label>
                     <input
                       type="email"
                       placeholder="e.g. eleanor@travel.com"
                       value={guestEmail}
-                      onChange={(e) => setGuestEmail(e.target.value)}
+                      onChange={(e) => setTamuEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                       required
                     />
@@ -380,7 +380,7 @@ export default function ContactBookingSection({
                       type="tel"
                       placeholder="e.g. +44 7911 123456"
                       value={guestPhone}
-                      onChange={(e) => setGuestPhone(e.target.value)}
+                      onChange={(e) => setTamuPhone(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                       required
                     />
@@ -390,7 +390,7 @@ export default function ContactBookingSection({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Special Requests (Airport Greeting, Dietary, Anniversary)
+                      Permintaan Khusus (Airport Greeting, Dietary, Anniversary)
                     </label>
                     <textarea
                       rows={2}
@@ -424,11 +424,11 @@ export default function ContactBookingSection({
                 </div>
               </div>
 
-              {/* Rate Summary and Submit Button */}
+              {/* Rate Summary and Kirim Button */}
               <div className="bg-ivory-100 p-6 rounded-xl border border-bordercolor flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-xs uppercase tracking-wider text-mutedgray block">
-                    Estimated Total for {nights} Night{nights > 1 ? 's' : ''}
+                    Perkiraan Total for {nights} Night{nights > 1 ? 's' : ''}
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-editorial text-3xl font-bold text-forest">
@@ -447,10 +447,10 @@ export default function ContactBookingSection({
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isKirimting}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold px-8 py-4 rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50"
                 >
-                  {isSubmitting ? (
+                  {isKirimting ? (
                     <span>Securing Suite...</span>
                   ) : (
                     <>

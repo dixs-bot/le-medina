@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
     UNIQUE(user_id, role)
 );
 
--- 3. Site Settings (Key-value / metadata for hotel contact, policies, currencies)
+-- 3. Site Pengaturan (Key-value / metadata for hotel contact, policies, currencies)
 CREATE TABLE IF NOT EXISTS public.site_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT UNIQUE NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.pages (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 5. Room Types (Suites, Deluxe Rooms, Riad Pavilions)
+-- 5. Tipe Kamars (Kamar, Deluxe Kamar, Riad Pavilions)
 CREATE TABLE IF NOT EXISTS public.room_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.room_types (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 6. Physical Rooms (Inventory assigned to Room Types)
+-- 6. Physical Kamar (Inventory assigned to Tipe Kamars)
 CREATE TABLE IF NOT EXISTS public.rooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_type_id UUID NOT NULL REFERENCES public.room_types(id) ON DELETE RESTRICT,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS public.room_images (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 8. Room Rates (Seasonal rates, Weekend spikes, Minimum stay rules)
+-- 8. Room Tarif (Seasonal rates, Weekend spikes, Minimum stay rules)
 CREATE TABLE IF NOT EXISTS public.room_rates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_type_id UUID NOT NULL REFERENCES public.room_types(id) ON DELETE CASCADE,
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS public.room_rates (
     CONSTRAINT valid_date_range CHECK (end_date >= start_date)
 );
 
--- 9. Reservations (Master booking records)
+-- 9. Reservasi (Master booking records)
 CREATE TABLE IF NOT EXISTS public.reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reservation_code TEXT UNIQUE NOT NULL,
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS public.reservations (
     CONSTRAINT valid_reservation_dates CHECK (check_out > check_in)
 );
 
--- 10. Reservation Items (Rooms booked within a reservation)
+-- 10. Reservation Items (Kamar booked within a reservation)
 CREATE TABLE IF NOT EXISTS public.reservation_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reservation_id UUID NOT NULL REFERENCES public.reservations(id) ON DELETE CASCADE,
@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS public.restaurant_menu (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 15. Facilities (Hammam & Spa, Pool Courtyard, Rooftop Starlight Lounge, etc.)
+-- 15. Facilities (Fasilitas, Pool Courtyard, Rooftop Starlight Lounge, etc.)
 CREATE TABLE IF NOT EXISTS public.facilities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS public.facilities (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 16. Special Offers (Seasonal promotions, Honeymoon package, Long stay discounts)
+-- 16. Promo Spesial (Seasonal promotions, Honeymoon package, Long stay discounts)
 CREATE TABLE IF NOT EXISTS public.offers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS public.offers (
     CONSTRAINT valid_offer_dates CHECK (valid_to >= valid_from)
 );
 
--- 17. Gallery Images (Categorized photo showcase)
+-- 17. Galeri Images (Categorized photo showcase)
 CREATE TABLE IF NOT EXISTS public.gallery_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     category TEXT NOT NULL CHECK (category IN ('architecture', 'suites', 'dining', 'wellness', 'experiences')),
@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS public.gallery_images (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 18. Guest Reviews (Verified guest testimonials)
+-- 18. Tamu Reviews (Verified guest testimonials)
 CREATE TABLE IF NOT EXISTS public.guest_reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     guest_name TEXT NOT NULL,

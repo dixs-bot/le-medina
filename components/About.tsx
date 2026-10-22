@@ -11,14 +11,14 @@ export default function About() {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-3">
-            Heritage & Sanctuary
+            Tentang Hotel
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-6">
-            Where Ancestral Moorish Poetry Meets Discreet Contemporary Luxury
+            Kenyamanan Menginap dengan Pelayanan yang Ramah
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-base leading-relaxed">
-            Constructed in the late 19th century as the private residence of an imperial dignitary, Hôtel Le Médina & Resto has been meticulously restored by master Maâlems (Moroccan master artisans) over seven years to revive forgotten architectural treasures.
+            Constructed in the late 19th century as the private residence of an imperial dignitary, Hôtel Le Médina & Resto has been meticulously restored by master Maâlems (Indonesia master artisans) over seven years to revive forgotten architectural treasures.
           </p>
         </div>
 
@@ -35,7 +35,7 @@ export default function About() {
               <div className="absolute inset-0 bg-gradient-to-t from-forest-950/70 via-transparent to-transparent" />
               <div className="absolute bottom-6 left-6 right-6 text-ivory">
                 <span className="text-xs uppercase tracking-widest text-gold-300 font-semibold block mb-1">
-                  Living Architecture
+                  Desain dan Kenyamanan
                 </span>
                 <p className="font-editorial text-xl italic font-normal">
                   “The soft whisper of fountain water over zellige tiles is the heartbeat of our courtyard.”
@@ -47,7 +47,7 @@ export default function About() {
             <div className="absolute -bottom-8 -right-4 sm:-right-8 bg-forest text-ivory p-6 rounded-lg shadow-2xl border border-gold/40 max-w-xs hidden sm:block">
               <div className="flex items-center gap-2 text-gold mb-2">
                 <Sparkles className="w-4 h-4" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Master Craftsmanship</span>
+                <span className="text-xs font-semibold uppercase tracking-wider">Detail yang Diperhatikan</span>
               </div>
               <p className="text-xs text-ivory-200 leading-relaxed">
                 Hand-sculpted gypsum plasterwork, Fez zellige geometric mosaics, and cedarwood beams carved with Andalusian verses.
@@ -77,7 +77,7 @@ export default function About() {
               </div>
               <div>
                 <h3 className="font-editorial text-xl font-bold text-forest mb-2">
-                  Bespoke Moroccan Hospitality
+                  Bespoke Indonesia Hospitality
                 </h3>
                 <p className="text-sm text-charcoal/80 leading-relaxed">
                   With only four exclusive suites and rooms, our dedicated majordomo team tailors every detail of your stay—from private starlit courtyard dinners to luggage escorts and curated artisan visits.

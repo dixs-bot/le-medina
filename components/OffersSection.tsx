@@ -28,10 +28,10 @@ export default function OffersSection({
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-400 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-            Privileged Stays
+            Penawaran Spesial
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-ivory leading-tight mb-4">
-            Seasonal Packages & Special Offers
+            Seasonal Packages & Promo Spesial
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-ivory-200/80 text-sm sm:text-base leading-relaxed">
@@ -60,7 +60,7 @@ export default function OffersSection({
                     {/* Discount Badge */}
                     {offer.discount_percentage && (
                       <div className="absolute top-4 right-4 bg-gold text-charcoal font-bold text-xs uppercase tracking-wider px-3 py-1.5 rounded shadow-lg flex items-center gap-1">
-                        <Tag className="w-3.5 h-3.5" /> Save {offer.discount_percentage}%
+                        <Tag className="w-3.5 h-3.5" /> Hemat {offer.discount_percentage}%
                       </div>
                     )}
                   </div>
@@ -69,7 +69,7 @@ export default function OffersSection({
                 {/* Offer Details */}
                 <div className="p-6 sm:p-8">
                   <div className="flex items-center gap-2 text-gold-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                    <Sparkles className="w-3.5 h-3.5" /> Limited Availability
+                    <Sparkles className="w-3.5 h-3.5" /> Ketersediaan Terbatas
                   </div>
 
                   <h3 className="font-editorial text-2xl font-bold text-ivory mb-2">
@@ -85,14 +85,14 @@ export default function OffersSection({
                   <div className="flex items-center gap-2 text-xs text-ivory-300/80 pb-4 border-b border-forest-800">
                     <Calendar className="w-4 h-4 text-gold-400" />
                     <span>
-                      Valid: <strong className="text-ivory">{formatDate(offer.valid_from)}</strong> to{' '}
+                      Berlaku: <strong className="text-ivory">{formatDate(offer.valid_from)}</strong> to{' '}
                       <strong className="text-ivory">{formatDate(offer.valid_to)}</strong>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Promo Code & Action Button */}
+              {/* Kode Promo & Action Button */}
               {offer.code && (
                 <div className="p-6 sm:p-8 pt-0 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2 w-full sm:w-auto">

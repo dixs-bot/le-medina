@@ -158,7 +158,7 @@ export interface Offer {
   is_active: boolean;
 }
 
-export interface GalleryImage {
+export interface GaleriImage {
   id: string;
   category: 'architecture' | 'suites' | 'dining' | 'wellness' | 'experiences';
   title: string;
@@ -167,7 +167,7 @@ export interface GalleryImage {
   sort_order: number;
 }
 
-export interface GuestReview {
+export interface TamuReview {
   id: string;
   guest_name: string;
   origin_city?: string;
@@ -180,7 +180,7 @@ export interface GuestReview {
   is_featured: boolean;
 }
 
-export interface SiteSettings {
+export interface SitePengaturan {
   name: string;
   tagline: string;
   stars: number;
@@ -194,11 +194,11 @@ export interface SiteSettings {
 }
 
 export interface AdminMetrics {
-  totalReservations: number;
-  pendingReservations: number;
-  confirmedReservations: number;
+  totalReservasi: number;
+  pendingReservasi: number;
+  confirmedReservasi: number;
   occupancyRatePercentage: number;
   totalRevenueCents: number;
   activeOffersCount: number;
-  totalRoomsInventory: number;
+  totalKamarInventory: number;
 }

@@ -30,10 +30,10 @@ export default function FacilitiesSection({ facilities }: FacilitiesSectionProps
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-            Restoration & Serenity
+            Kenyamanan dan Layanan
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-4">
-            Curated Hotel Experiences & Amenities
+            Fasilitas dan Layanan Hotel
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
@@ -69,7 +69,7 @@ export default function FacilitiesSection({ facilities }: FacilitiesSectionProps
                         {getIcon(fac.icon_name)}
                       </div>
                       <span className="text-[11px] uppercase tracking-wider font-semibold text-gold-600">
-                        Exclusive Facility
+                        Fasilitas Unggulan
                       </span>
                     </div>
 
@@ -90,7 +90,7 @@ export default function FacilitiesSection({ facilities }: FacilitiesSectionProps
 
                 <div className="pt-3 border-t border-bordercolor/60 flex items-center gap-2 text-xs text-forest font-medium">
                   <CheckCircle className="w-3.5 h-3.5 text-status-success" />
-                  <span>Complimentary for Resident Guests</span>
+                  <span>Complimentary for Resident Tamus</span>
                 </div>
               </div>
             </div>

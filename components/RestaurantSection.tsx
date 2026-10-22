@@ -26,23 +26,23 @@ export default function RestaurantSection({
 
   const cleanWhatsAppNumber = whatsappNumber.replace(/[^0-9]/g, '');
   const dinnerInquiryText = encodeURIComponent(
-    'Salam! I would like to inquire about reserving a table at Le Médina Resto for lunch/dinner.'
+    'Salam! I would like to inquire about reserving a table at Restoran Le Medina for lunch/dinner.'
   );
   const whatsappUrl = `https://wa.me/${cleanWhatsAppNumber}?text=${dinnerInquiryText}`;
 
   return (
     <section id="dining" className="py-24 bg-forest-950 text-ivory relative overflow-hidden">
-      {/* Subtle Moroccan background pattern */}
+      {/* Subtle Indonesia background pattern */}
       <div className="absolute inset-0 bg-radial-gradient opacity-20 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-gold-400 text-xs uppercase tracking-[0.25em] font-semibold block mb-3">
-            Haute Gastronomie Marocaine
+            Pilihan Hidangan
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-ivory leading-tight mb-4">
-            Le Restaurant & Courtyard Salon
+            Restoran Le Medina
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-ivory-200/80 text-sm sm:text-base leading-relaxed">
@@ -84,7 +84,7 @@ export default function RestaurantSection({
                   />
                   {item.is_signature && (
                     <div className="absolute top-1 left-1 bg-gold text-charcoal text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold">
-                      Signature
+                      Andalan
                     </div>
                   )}
                 </div>

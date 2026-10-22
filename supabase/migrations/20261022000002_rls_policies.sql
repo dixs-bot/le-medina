@@ -61,7 +61,7 @@ CREATE POLICY "Admins can view all roles" ON public.user_roles
 CREATE POLICY "Super admins can manage roles" ON public.user_roles
     FOR ALL USING (public.current_user_has_role('super_admin'));
 
--- 3. Site Settings (Public read, admin write)
+-- 3. Site Pengaturan (Public read, admin write)
 CREATE POLICY "Public can view site settings" ON public.site_settings
     FOR SELECT USING (true);
 CREATE POLICY "Admins can update site settings" ON public.site_settings
@@ -73,7 +73,7 @@ CREATE POLICY "Public can view published pages" ON public.pages
 CREATE POLICY "Editors can manage pages" ON public.pages
     FOR ALL USING (public.current_user_has_role('content_editor'));
 
--- 5. Room Types & Images (Public read active, editor write)
+-- 5. Tipe Kamars & Images (Public read active, editor write)
 CREATE POLICY "Public can view active room types" ON public.room_types
     FOR SELECT USING (is_active = true OR public.current_user_has_role('content_editor'));
 CREATE POLICY "Editors can manage room types" ON public.room_types
@@ -84,22 +84,22 @@ CREATE POLICY "Public can view room images" ON public.room_images
 CREATE POLICY "Editors can manage room images" ON public.room_images
     FOR ALL USING (public.current_user_has_role('content_editor'));
 
--- 6. Rooms (Staff read, admin manage)
+-- 6. Kamar (Staff read, admin manage)
 CREATE POLICY "Staff can view rooms inventory" ON public.rooms
     FOR SELECT USING (public.current_user_has_role('reservation_staff'));
 CREATE POLICY "Admins can manage rooms inventory" ON public.rooms
     FOR ALL USING (public.current_user_has_role('admin'));
 
--- 7. Room Rates (Public read active rates, staff manage)
+-- 7. Room Tarif (Public read active rates, staff manage)
 CREATE POLICY "Public can view active room rates" ON public.room_rates
     FOR SELECT USING (is_active = true OR public.current_user_has_role('reservation_staff'));
 CREATE POLICY "Staff can manage room rates" ON public.room_rates
     FOR ALL USING (public.current_user_has_role('reservation_staff'));
 
--- 8. Reservations & Items (Public can insert their booking, staff can view and manage)
-CREATE POLICY "Guests can create reservations" ON public.reservations
+-- 8. Reservasi & Items (Public can insert their booking, staff can view and manage)
+CREATE POLICY "Tamus can create reservations" ON public.reservations
     FOR INSERT WITH CHECK (true);
-CREATE POLICY "Guests can view own reservation by code" ON public.reservations
+CREATE POLICY "Tamus can view own reservation by code" ON public.reservations
     FOR SELECT USING (true);
 CREATE POLICY "Staff can update reservations" ON public.reservations
     FOR ALL USING (public.current_user_has_role('reservation_staff'));
@@ -130,7 +130,7 @@ CREATE POLICY "Public can view restaurant menu" ON public.restaurant_menu
 CREATE POLICY "Editors can manage restaurant menu" ON public.restaurant_menu
     FOR ALL USING (public.current_user_has_role('content_editor'));
 
--- 10. Facilities, Offers, Gallery, Reviews (Public read, editor manage)
+-- 10. Facilities, Offers, Galeri, Reviews (Public read, editor manage)
 CREATE POLICY "Public can view facilities" ON public.facilities
     FOR SELECT USING (is_active = true OR public.current_user_has_role('content_editor'));
 CREATE POLICY "Editors can manage facilities" ON public.facilities
@@ -148,7 +148,7 @@ CREATE POLICY "Editors can manage gallery" ON public.gallery_images
 
 CREATE POLICY "Public can view reviews" ON public.guest_reviews
     FOR SELECT USING (is_featured = true OR public.current_user_has_role('content_editor'));
-CREATE POLICY "Guests can submit reviews" ON public.guest_reviews
+CREATE POLICY "Tamus can submit reviews" ON public.guest_reviews
     FOR INSERT WITH CHECK (true);
 CREATE POLICY "Editors can manage reviews" ON public.guest_reviews
     FOR ALL USING (public.current_user_has_role('content_editor'));

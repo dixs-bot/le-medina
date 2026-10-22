@@ -8,37 +8,37 @@ import {
   RestaurantMenuItem,
   Facility,
   Offer,
-  GalleryImage,
-  GuestReview,
-  SiteSettings,
+  GaleriImage,
+  TamuReview,
+  SitePengaturan,
 } from '../types';
 import {
-  initialSiteSettings,
+  initialSitePengaturan,
   initialRoomTypes,
-  initialRooms,
-  initialRoomRates,
-  initialReservations,
+  initialKamar,
+  initialRoomTarif,
+  initialReservasi,
   initialRestaurantCategories,
   initialMenuItems,
   initialFacilities,
   initialOffers,
-  initialGalleryImages,
-  initialGuestReviews,
+  initialGaleriImages,
+  initialTamuReviews,
 } from './seed';
 
 // Persistent in-memory global state across Route Handlers in serverless/Node process
 interface GlobalState {
-  siteSettings: SiteSettings;
+  sitePengaturan: SitePengaturan;
   roomTypes: RoomType[];
   rooms: Room[];
-  roomRates: RoomRate[];
+  roomTarif: RoomRate[];
   reservations: Reservation[];
   restaurantCategories: RestaurantCategory[];
   menuItems: RestaurantMenuItem[];
   facilities: Facility[];
   offers: Offer[];
-  galleryImages: GalleryImage[];
-  guestReviews: GuestReview[];
+  galleryImages: GaleriImage[];
+  guestReviews: TamuReview[];
 }
 
 const globalForStore = globalThis as unknown as {
@@ -47,17 +47,17 @@ const globalForStore = globalThis as unknown as {
 
 if (!globalForStore.hotelStore) {
   globalForStore.hotelStore = {
-    siteSettings: { ...initialSiteSettings },
+    sitePengaturan: { ...initialSitePengaturan },
     roomTypes: JSON.parse(JSON.stringify(initialRoomTypes)),
-    rooms: JSON.parse(JSON.stringify(initialRooms)),
-    roomRates: JSON.parse(JSON.stringify(initialRoomRates)),
-    reservations: JSON.parse(JSON.stringify(initialReservations)),
+    rooms: JSON.parse(JSON.stringify(initialKamar)),
+    roomTarif: JSON.parse(JSON.stringify(initialRoomTarif)),
+    reservations: JSON.parse(JSON.stringify(initialReservasi)),
     restaurantCategories: JSON.parse(JSON.stringify(initialRestaurantCategories)),
     menuItems: JSON.parse(JSON.stringify(initialMenuItems)),
     facilities: JSON.parse(JSON.stringify(initialFacilities)),
     offers: JSON.parse(JSON.stringify(initialOffers)),
-    galleryImages: JSON.parse(JSON.stringify(initialGalleryImages)),
-    guestReviews: JSON.parse(JSON.stringify(initialGuestReviews)),
+    galleryImages: JSON.parse(JSON.stringify(initialGaleriImages)),
+    guestReviews: JSON.parse(JSON.stringify(initialTamuReviews)),
   };
 }
 
@@ -84,17 +84,17 @@ export function getDatesBetween(startDateStr: string, endDateStr: string): strin
   return dates;
 }
 
-// 1. Site Settings
-export async function getSiteSettings(): Promise<SiteSettings> {
-  return store.siteSettings;
+// 1. Site Pengaturan
+export async function getSitePengaturan(): Promise<SitePengaturan> {
+  return store.sitePengaturan;
 }
 
-export async function updateSiteSettings(partial: Partial<SiteSettings>): Promise<SiteSettings> {
-  store.siteSettings = { ...store.siteSettings, ...partial };
-  return store.siteSettings;
+export async function updateSitePengaturan(partial: Partial<SitePengaturan>): Promise<SitePengaturan> {
+  store.sitePengaturan = { ...store.sitePengaturan, ...partial };
+  return store.sitePengaturan;
 }
 
-// 2. Room Types & Rooms
+// 2. Tipe Kamars & Kamar
 export async function getRoomTypes(): Promise<RoomType[]> {
   return store.roomTypes.filter((rt) => rt.is_active);
 }
@@ -113,7 +113,7 @@ export async function getRoomTypeById(id: string): Promise<RoomType | null> {
   return rt || null;
 }
 
-export async function getRooms(): Promise<Room[]> {
+export async function getKamar(): Promise<Room[]> {
   return store.rooms;
 }
 
@@ -152,7 +152,7 @@ export async function calculateStayPricing(
 
   const rates: NightRateDetail[] = nights.map((nightDate) => {
     // Check if custom seasonal rate applies
-    const customRate = store.roomRates.find(
+    const customRate = store.roomTarif.find(
       (r) =>
         r.room_type_id === roomTypeId &&
         r.is_active &&
@@ -215,28 +215,28 @@ export async function checkRoomAvailability(
   roomTypeId: string,
   checkIn: string,
   checkOut: string
-): Promise<{ isAvailable: boolean; availableRoomsCount: number; assignedRoomId?: string }> {
+): Promise<{ isTersedia: boolean; availableKamarCount: number; assignedRoomId?: string }> {
   const reqNights = getDatesBetween(checkIn, checkOut);
   if (reqNights.length === 0) {
-    return { isAvailable: false, availableRoomsCount: 0 };
+    return { isTersedia: false, availableKamarCount: 0 };
   }
 
   // Get physical rooms for this room type
-  const physicalRooms = store.rooms.filter(
+  const physicalKamar = store.rooms.filter(
     (r) => r.room_type_id === roomTypeId && r.status === 'available'
   );
 
   // Active reservations that could overlap
-  const activeReservations = store.reservations.filter(
+  const activeReservasi = store.reservations.filter(
     (res) =>
       res.status === 'confirmed' ||
       res.status === 'pending' ||
       res.status === 'checked_in'
   );
 
-  const availableRooms = physicalRooms.filter((physRoom) => {
+  const availableKamar = physicalKamar.filter((physRoom) => {
     // Check if this room is booked on ANY of the requested nights
-    const hasConflict = activeReservations.some((res) => {
+    const hasConflict = activeReservasi.some((res) => {
       if (res.assigned_room_number !== physRoom.room_number) return false;
       // Interval overlap check: [res.check_in, res.check_out) overlaps with [checkIn, checkOut)
       return !(res.check_out <= checkIn || res.check_in >= checkOut);
@@ -246,9 +246,9 @@ export async function checkRoomAvailability(
   });
 
   return {
-    isAvailable: availableRooms.length > 0,
-    availableRoomsCount: availableRooms.length,
-    assignedRoomId: availableRooms[0]?.id,
+    isTersedia: availableKamar.length > 0,
+    availableKamarCount: availableKamar.length,
+    assignedRoomId: availableKamar[0]?.id,
   };
 }
 
@@ -289,22 +289,22 @@ export async function createAtomicReservation(
 
   // 1. Verify availability
   const availability = await checkRoomAvailability(room_type_id, check_in, check_out);
-  if (!availability.isAvailable) {
+  if (!availability.isTersedia) {
     throw new Error(
       'Sorry, no rooms of this category are available for the selected dates. Please select alternative dates or a different suite.'
     );
   }
 
   // 2. Find assigned room
-  const physicalRooms = store.rooms.filter(
+  const physicalKamar = store.rooms.filter(
     (r) => r.room_type_id === room_type_id && r.status === 'available'
   );
-  const activeReservations = store.reservations.filter(
+  const activeReservasi = store.reservations.filter(
     (res) => res.status === 'confirmed' || res.status === 'pending' || res.status === 'checked_in'
   );
 
-  const assignedRoom = physicalRooms.find((physRoom) => {
-    const hasConflict = activeReservations.some((res) => {
+  const assignedRoom = physicalKamar.find((physRoom) => {
+    const hasConflict = activeReservasi.some((res) => {
       if (res.assigned_room_number !== physRoom.room_number) return false;
       return !(res.check_out <= check_in || res.check_in >= check_out);
     });
@@ -347,7 +347,7 @@ export async function createAtomicReservation(
 }
 
 // 6. Reservation Management
-export async function getReservations(filter?: {
+export async function getReservasi(filter?: {
   status?: ReservationStatus;
   search?: string;
 }): Promise<Reservation[]> {
@@ -420,7 +420,7 @@ export async function updateMenuItem(
   return store.menuItems[index];
 }
 
-// 8. Facilities, Offers, Gallery, Reviews
+// 8. Facilities, Offers, Galeri, Reviews
 export async function getFacilities(): Promise<Facility[]> {
   return store.facilities.filter((f) => f.is_active);
 }
@@ -429,29 +429,29 @@ export async function getOffers(): Promise<Offer[]> {
   return store.offers.filter((o) => o.is_active);
 }
 
-export async function getGalleryImages(): Promise<GalleryImage[]> {
+export async function getGaleriImages(): Promise<GaleriImage[]> {
   return store.galleryImages;
 }
 
-export async function getGuestReviews(): Promise<GuestReview[]> {
+export async function getTamuReviews(): Promise<TamuReview[]> {
   return store.guestReviews.filter((r) => r.is_featured);
 }
 
-// 9. Admin KPI Overview Metrics
+// 9. Admin KPI Ringkasan Metrics
 export interface AdminMetrics {
-  totalReservations: number;
-  pendingReservations: number;
-  confirmedReservations: number;
+  totalReservasi: number;
+  pendingReservasi: number;
+  confirmedReservasi: number;
   occupancyRatePercentage: number;
   totalRevenueCents: number;
   activeOffersCount: number;
-  totalRoomsInventory: number;
+  totalKamarInventory: number;
 }
 
 export async function getAdminMetrics(): Promise<AdminMetrics> {
-  const totalReservations = store.reservations.length;
-  const pendingReservations = store.reservations.filter((r) => r.status === 'pending').length;
-  const confirmedReservations = store.reservations.filter(
+  const totalReservasi = store.reservations.length;
+  const pendingReservasi = store.reservations.filter((r) => r.status === 'pending').length;
+  const confirmedReservasi = store.reservations.filter(
     (r) => r.status === 'confirmed' || r.status === 'checked_in'
   ).length;
 
@@ -459,21 +459,21 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     .filter((r) => r.status !== 'cancelled')
     .reduce((sum, r) => sum + r.total_amount_cents, 0);
 
-  const totalRoomsInventory = store.rooms.length;
+  const totalKamarInventory = store.rooms.length;
   const occupiedCount = store.reservations.filter((r) => r.status === 'checked_in' || r.status === 'confirmed').length;
-  const occupancyRatePercentage = totalRoomsInventory > 0
-    ? Math.min(100, Math.round((occupiedCount / totalRoomsInventory) * 100))
+  const occupancyRatePercentage = totalKamarInventory > 0
+    ? Math.min(100, Math.round((occupiedCount / totalKamarInventory) * 100))
     : 78;
 
   const activeOffersCount = store.offers.filter((o) => o.is_active).length;
 
   return {
-    totalReservations,
-    pendingReservations,
-    confirmedReservations,
+    totalReservasi,
+    pendingReservasi,
+    confirmedReservasi,
     occupancyRatePercentage,
     totalRevenueCents,
     activeOffersCount,
-    totalRoomsInventory,
+    totalKamarInventory,
   };
 }

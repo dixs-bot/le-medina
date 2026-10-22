@@ -32,18 +32,18 @@ export default function Hero() {
               <Star key={i} className="w-3.5 h-3.5 fill-gold text-gold" />
             ))}
           </div>
-          <span className="font-semibold text-ivory">5-Star Luxury Riad & Historic Haven</span>
+          <span className="font-semibold text-ivory">Hotel & Restoran di Singkawang</span>
         </div>
 
         {/* Hero Title */}
         <h1 className="font-editorial text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-ivory leading-[1.1] mb-6">
-          An Andalusian Sanctuary of <br />
-          <span className="italic font-normal text-gold-300">Timeless Elegance</span> in Marrakech
+          Pengalaman Menginap Nyaman di <br />
+          <span className="italic font-normal text-gold-300">Singkawang</span> di Singkawang
         </h1>
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-base sm:text-lg text-ivory-200/90 font-light leading-relaxed mb-10">
-          Behind modest Medina walls lies an authentic palace of tranquil emerald courtyards, hand-carved cedarwood salons, Michelin-inspired Moroccan gastronomy, and ancestral hammam rituals.
+          Behind modest Medina walls lies an authentic palace of tranquil emerald courtyards, hand-carved cedarwood salons, Michelin-inspired Indonesia gastronomy, and ancestral hammam rituals.
         </p>
 
         {/* Dual Primary CTAs */}
@@ -52,7 +52,7 @@ export default function Hero() {
             href="#suites"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gold hover:bg-gold-600 text-charcoal-900 font-semibold px-8 py-4 rounded text-xs uppercase tracking-widest shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
           >
-            <span>Explore Suites & Stays</span>
+            <span>Jelajahi Kamar</span>
             <ArrowRight className="w-4 h-4" />
           </a>
           <a
@@ -60,7 +60,7 @@ export default function Hero() {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-forest-800/80 hover:bg-forest-700/90 border border-gold/50 text-ivory font-medium px-8 py-4 rounded text-xs uppercase tracking-widest backdrop-blur-sm transition-all"
           >
             <UtensilsCrossed className="w-4 h-4 text-gold" />
-            <span>Restaurant & Gastronomy</span>
+            <span>Restoran & Hidangan</span>
           </a>
         </div>
 
@@ -68,7 +68,7 @@ export default function Hero() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-forest-700/60 text-left">
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Sparkles className="w-3.5 h-3.5" /> Suites Only
+              <Sparkles className="w-3.5 h-3.5" /> Kamar Only
             </div>
             <p className="text-xs text-ivory-300">4 bespoke suites & rooms with zellige tile & cedar details</p>
           </div>

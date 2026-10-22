@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
       roomTypeId,
       checkIn,
       checkOut,
-      isAvailable: availability.isAvailable,
-      availableRoomsCount: availability.availableRoomsCount,
+      isTersedia: availability.isTersedia,
+      availableKamarCount: availability.availableKamarCount,
       pricing,
     });
   } catch (error: any) {

@@ -17,14 +17,14 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { label: 'Suites', href: '#suites' },
-    { label: 'The Riad', href: '#about' },
-    { label: 'Restaurant & Teas', href: '#dining' },
-    { label: 'Hammam & Spa', href: '#facilities' },
-    { label: 'Special Offers', href: '#offers' },
-    { label: 'Gallery', href: '#gallery' },
-    { label: 'Location', href: '#location' },
-    { label: 'Contact', href: '#contact' },
+    { label: 'Kamar', href: '#suites' },
+    { label: 'Tentang Kami', href: '#about' },
+    { label: 'Restoran', href: '#dining' },
+    { label: 'Fasilitas', href: '#facilities' },
+    { label: 'Promo Spesial', href: '#offers' },
+    { label: 'Galeri', href: '#gallery' },
+    { label: 'Lokasi', href: '#location' },
+    { label: 'Kontak', href: '#contact' },
   ];
 
   return (
@@ -34,10 +34,10 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto flex justify-between items-center tracking-wider uppercase font-medium">
           <div className="flex items-center space-x-6">
             <span className="flex items-center gap-1.5 text-gold-300">
-              <ShieldCheck className="w-3.5 h-3.5" /> Direct Booking Guarantee: Best Rate & VIP Hammam
+              <ShieldCheck className="w-3.5 h-3.5" /> Pesan Langsung untuk Informasi dan Layanan Hotel
             </span>
             <span className="text-forest-100/60">•</span>
-            <span className="text-forest-100/80">Marrakech Medina, Morocco</span>
+            <span className="text-forest-100/80">Singkawang, Kalimantan Barat, Indonesia</span>
           </div>
           <div className="flex items-center space-x-6">
             <a
@@ -72,7 +72,7 @@ export default function Navbar() {
               HÔTEL LE MÉDINA
             </span>
             <span className="text-[10px] tracking-[0.28em] uppercase text-gold-600 font-medium -mt-1">
-              & Resto • Marrakech
+              & Resto • Singkawang
             </span>
           </Link>
 
@@ -147,7 +147,7 @@ export default function Navbar() {
                   className="flex items-center justify-center gap-2 bg-ivory-200 text-forest text-xs uppercase tracking-widest py-2.5 rounded font-medium border border-bordercolor"
                 >
                   <Compass className="w-4 h-4 text-gold" />
-                  <span>Admin & Staff Portal</span>
+                  <span>Portal Admin dan Staf</span>
                 </Link>
               </div>
             </div>

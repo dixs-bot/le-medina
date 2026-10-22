@@ -23,15 +23,15 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
     {
       label: 'Dinner Table Reservation',
       icon: <Utensils className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I would like to reserve a dinner table at Le Médina Resto.',
+      text: 'Salam! I would like to reserve a dinner table at Restoran Le Medina.',
     },
     {
       label: 'Airport VIP Transfer',
       icon: <Car className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I need assistance arranging an airport chauffeur pickup in Marrakech.',
+      text: 'Salam! I need assistance arranging an airport chauffeur pickup di Singkawang.',
     },
     {
-      label: 'Hammam & Spa Appointment',
+      label: 'Fasilitas Appointment',
       icon: <Sparkles className="w-4 h-4 text-emerald-600" />,
       text: 'Salam! I would like to schedule a private hammam and massage session.',
     },
@@ -58,9 +58,9 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
               </div>
               <div>
                 <h4 className="font-editorial text-sm font-bold text-ivory">
-                  Hôtel Le Médina Concierge
+                  Layanan Tamu Le Medina
                 </h4>
-                <p className="text-[10px] text-emerald-300">Typically replies within 5 minutes</p>
+                <p className="text-[10px] text-emerald-300">Biasanya membalas dalam 5 menit</p>
               </div>
             </div>
             <button
@@ -75,7 +75,7 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
           {/* Quick Preset Buttons */}
           <div className="p-4 bg-ivory-50 space-y-2 text-xs">
             <span className="text-[10px] uppercase tracking-wider font-semibold text-mutedgray block mb-1">
-              Select an inquiry topic:
+              Pilih topik pertanyaan:
             </span>
             {presets.map((preset, idx) => (
               <button
@@ -115,7 +115,7 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative flex items-center gap-2.5 bg-status-success hover:bg-emerald-600 text-white px-4 py-3.5 rounded-full shadow-2xl hover:shadow-emerald-900/40 transition-all transform hover:scale-105"
-        aria-label="Contact Concierge on WhatsApp"
+        aria-label="Kontak Concierge on WhatsApp"
       >
         <MessageSquare className="w-5 h-5 fill-white text-white" />
         <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">

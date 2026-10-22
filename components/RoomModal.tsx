@@ -115,7 +115,7 @@ export default function RoomModal({
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-gold" />
-                <span>Up to {room.max_adults} Adults</span>
+                <span>Maksimal {room.max_adults} Dewasa</span>
               </div>
               <div className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-gold" />
@@ -129,7 +129,7 @@ export default function RoomModal({
             <div>
               {/* Category & Title */}
               <div className="flex items-center gap-2 text-gold-600 text-xs font-semibold uppercase tracking-widest mb-1">
-                <Sparkles className="w-3.5 h-3.5" /> Luxury Moroccan Suite
+                <Sparkles className="w-3.5 h-3.5" /> Luxury Indonesia Suite
               </div>
               <h3 id="modal-room-title" className="font-editorial text-2xl sm:text-3xl font-bold text-forest mb-2">
                 {room.name}
@@ -168,7 +168,7 @@ export default function RoomModal({
                   </div>
                 </div>
                 <p className="text-[11px] text-mutedgray">
-                  *Includes complimentary organic Moroccan breakfast, high-speed Wi-Fi & concierge service. Local city tax applies at check-out.
+                  *Includes complimentary organic Indonesia breakfast, high-speed Wi-Fi & concierge service. Local city tax applies at check-out.
                 </p>
               </div>
             </div>

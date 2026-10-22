@@ -7,22 +7,22 @@ import {
   RestaurantMenuItem,
   Facility,
   Offer,
-  GalleryImage,
-  GuestReview,
-  SiteSettings,
+  GaleriImage,
+  TamuReview,
+  SitePengaturan,
 } from '../types';
 
-export const initialSiteSettings: SiteSettings = {
+export const initialSitePengaturan: SitePengaturan = {
   name: 'Hôtel Le Médina & Resto',
-  tagline: 'An Andalusian-Moroccan Sanctuary of Timeless Grace',
+  tagline: 'Hotel nyaman untuk pengalaman menginap berkesan',
   stars: 5,
-  address: '42 Derb Sidi Bouloukate, Medina, Marrakech 40000, Morocco',
+  address: 'Singkawang, Kalimantan Barat, Indonesia',
   phone: '+212 524 38 90 00',
   whatsapp: '+212661389000',
   email: 'concierge@lemedinahotel.com',
   check_in_time: '15:00',
   check_out_time: '12:00',
-  currency: 'EUR',
+  currency: 'IDR',
 };
 
 export const initialRoomTypes: RoomType[] = [
@@ -30,25 +30,25 @@ export const initialRoomTypes: RoomType[] = [
     id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     name: 'Sultana Royal Courtyard Suite',
     slug: 'sultana-royal-suite',
-    tagline: 'Opulent palace suite with hand-carved cedar ceilings and private fountain terrace',
+    tagline: 'Kamar nyaman dengan fasilitas untuk menunjang waktu istirahat Anda',
     description:
-      'The Sultana Suite epitomizes classic Andalusian aristocracy. Featuring a spacious salon adorned with authentic zellige tiles, a master bedroom draped in raw silk, an open-hearth fireplace, and an en-suite tadelakt bathroom with a sunken marble bath.',
+      'Kamar dirancang untuk memberikan kenyamanan selama Anda menginap. Silakan hubungi pihak hotel untuk memastikan detail fasilitas yang tersedia.',
     base_price_cents: 42000,
-    currency: 'EUR',
+    currency: 'IDR',
     max_adults: 3,
     max_children: 1,
     size_sqm: 65.0,
-    bed_type: 'King Imperial Bed',
-    view_type: 'Central Riad Courtyard & Fountain',
+    bed_type: 'Tempat tidur king',
+    view_type: 'Pemandangan area hotel',
     amenities: [
-      'Private Balcony',
-      'Sunken Marble Bath',
-      'Open Fireplace',
-      'Complimentary Moroccan Breakfast',
-      'Personal Butler Service',
-      'Nespresso Atelier Bar',
-      'High-Speed Wi-Fi',
-      'Artisanal Argan Skincare',
+      'Balkon pribadi',
+      'Kamar mandi',
+      'Area duduk',
+      'Complimentary Indonesia Breakfast',
+      'Layanan tamu',
+      'Fasilitas minuman',
+      'Wi-Fi',
+      'Perlengkapan mandi',
     ],
     is_active: true,
     sort_order: 1,
@@ -77,9 +77,9 @@ export const initialRoomTypes: RoomType[] = [
     slug: 'majorelle-garden-deluxe',
     tagline: 'Vibrant cobalt-tinted sanctuary overlooking fragrant citrus orchards',
     description:
-      'Inspired by the legendary botanical gardens of Marrakech, this light-filled haven boasts vaulted arches, custom brass lanterns, bespoke wrought-iron furnishings, and a serene reading nook overlooking our private orange blossom garden.',
+      'Inspired by the legendary botanical gardens of Singkawang, this light-filled haven boasts vaulted arches, custom brass lanterns, bespoke wrought-iron furnishings, and a serene reading nook overlooking our private orange blossom garden.',
     base_price_cents: 31000,
-    currency: 'EUR',
+    currency: 'IDR',
     max_adults: 2,
     max_children: 1,
     size_sqm: 45.0,
@@ -89,7 +89,7 @@ export const initialRoomTypes: RoomType[] = [
       'Garden View Terrace',
       'Rainforest Tadelakt Shower',
       'Plush Terry Robes & Slippers',
-      'Complimentary Moroccan Breakfast',
+      'Complimentary Indonesia Breakfast',
       'Mini Bar & Organic Herbal Infusions',
       'Smart Satellite Screen',
       'Organic Botanical Skincare',
@@ -123,7 +123,7 @@ export const initialRoomTypes: RoomType[] = [
     description:
       'Perched atop Le Médina, the Atlas Panorama Suite boasts floor-to-ceiling French doors opening to an exclusive 25-sqm private rooftop solarium. Stargaze in your outdoor copper soaking tub or savor afternoon tea beneath embroidered Berber canopy curtains.',
     base_price_cents: 55000,
-    currency: 'EUR',
+    currency: 'IDR',
     max_adults: 2,
     max_children: 0,
     size_sqm: 75.0,
@@ -135,7 +135,7 @@ export const initialRoomTypes: RoomType[] = [
       'Sunset Cocktail Bar',
       'Complimentary VIP Airport Transfer',
       'Complimentary Private Hammam Session',
-      'Open Fireplace',
+      'Area duduk',
       'Bang & Olufsen Acoustic System',
     ],
     is_active: true,
@@ -163,11 +163,11 @@ export const initialRoomTypes: RoomType[] = [
     id: 'd4444444-dddd-dddd-dddd-dddddddddddd',
     name: 'Riad Jasmine Heritage Room',
     slug: 'riad-jasmine-heritage-room',
-    tagline: 'Intimate and romantic jewel box celebrating Moroccan craftsmanship',
+    tagline: 'Intimate and romantic jewel box celebrating Indonesia craftsmanship',
     description:
       'Warm terracotta tones, hand-hammered copper sconces, and woven Fez kilims create an intimate and restful cocoon for couples seeking authentic serenity within the historic Medina.',
     base_price_cents: 22000,
-    currency: 'EUR',
+    currency: 'IDR',
     max_adults: 2,
     max_children: 0,
     size_sqm: 34.0,
@@ -176,7 +176,7 @@ export const initialRoomTypes: RoomType[] = [
     amenities: [
       'Handcrafted Tadelakt Shower',
       'Organic Herb Infusion Bar',
-      'Complimentary Moroccan Breakfast',
+      'Complimentary Indonesia Breakfast',
       'Silent In-Room Climate Control',
       'Marshall Bluetooth Speaker',
     ],
@@ -195,7 +195,7 @@ export const initialRoomTypes: RoomType[] = [
   },
 ];
 
-export const initialRooms: Room[] = [
+export const initialKamar: Room[] = [
   { id: 'rm-101', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: 'Suite 101', floor: 1, wing: 'Courtyard Wing', status: 'available' },
   { id: 'rm-102', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: 'Suite 102', floor: 1, wing: 'Courtyard Wing', status: 'available' },
   { id: 'rm-201', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: 'Deluxe 201', floor: 2, wing: 'Garden Wing', status: 'available' },
@@ -205,7 +205,7 @@ export const initialRooms: Room[] = [
   { id: 'rm-106', room_type_id: 'd4444444-dddd-dddd-dddd-dddddddddddd', room_number: 'Room 106', floor: 1, wing: 'Jasmine Patio', status: 'available' },
 ];
 
-export const initialRoomRates: RoomRate[] = [
+export const initialRoomTarif: RoomRate[] = [
   {
     id: 'rate-1',
     room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -228,7 +228,7 @@ export const initialRoomRates: RoomRate[] = [
   },
 ];
 
-export const initialReservations: Reservation[] = [
+export const initialReservasi: Reservation[] = [
   {
     id: 'res-001',
     reservation_code: 'MED-78A42F',
@@ -242,7 +242,7 @@ export const initialReservations: Reservation[] = [
     children: 0,
     status: 'confirmed',
     total_amount_cents: 168000,
-    currency: 'EUR',
+    currency: 'IDR',
     source: 'direct_web',
     whatsapp_notified: true,
     internal_notes: 'VIP guest from London. Arrange welcome mint tea & fruit basket.',
@@ -263,7 +263,7 @@ export const initialReservations: Reservation[] = [
     children: 0,
     status: 'pending',
     total_amount_cents: 124000,
-    currency: 'EUR',
+    currency: 'IDR',
     source: 'direct_web',
     whatsapp_notified: false,
     internal_notes: 'Awaiting deposit verification.',
@@ -284,7 +284,7 @@ export const initialReservations: Reservation[] = [
     children: 0,
     status: 'confirmed',
     total_amount_cents: 260000,
-    currency: 'EUR',
+    currency: 'IDR',
     source: 'direct_web',
     whatsapp_notified: true,
     internal_notes: 'Atlas Suite booked for Starlight season.',
@@ -297,7 +297,7 @@ export const initialReservations: Reservation[] = [
 export const initialRestaurantCategories: RestaurantCategory[] = [
   {
     id: 'e1111111-eeee-eeee-eeee-eeeeeeeeeeee',
-    name: 'Entrées & Moroccan Mezze',
+    name: 'Entrées & Indonesia Mezze',
     slug: 'mezze',
     description: 'Delicate salads, savory pastries and spiced dips prepared fresh at dawn',
     sort_order: 1,
@@ -335,9 +335,9 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     category_id: 'e1111111-eeee-eeee-eeee-eeeeeeeeeeee',
     name: 'Le Médina Royal Mezze Platter',
     description:
-      'Seven classical Moroccan salads including Zaalouk roasted eggplant, cumin beetroot, Mechouia grilled peppers, and caramelized pumpkin with toasted sesame.',
+      'Seven classical Indonesia salads including Zaalouk roasted eggplant, cumin beetroot, Mechouia grilled peppers, and caramelized pumpkin with toasted sesame.',
     price_cents: 1800,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: true,
     is_vegan: true,
     is_gluten_free: true,
@@ -353,7 +353,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Golden warqa pastry parcels layered with shredded spiced squab pigeon, roasted crushed almonds, cinnamon, and powdered orange blossom sugar.',
     price_cents: 2400,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: false,
     is_vegan: false,
     is_gluten_free: false,
@@ -369,7 +369,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Tender 8-hour braised pasture-fed lamb with caramelized golden figs, toasted walnuts, sesame seeds, and saffron-cardamom broth.',
     price_cents: 3200,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: false,
     is_vegan: false,
     is_gluten_free: true,
@@ -385,7 +385,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Free-range chicken simmered gently with hand-cured Meslalla olives, wild thyme, and organic pickled lemons from our Taroudant farm.',
     price_cents: 2700,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: false,
     is_vegan: false,
     is_gluten_free: true,
@@ -401,7 +401,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Hand-rolled fine semolina steamed thrice over fragrant vegetable bouillon, topped with sweet caramelized onions, chickpeas and autumn root harvest.',
     price_cents: 2200,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: true,
     is_vegan: true,
     is_gluten_free: false,
@@ -417,7 +417,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Fresh line-caught fish from Essaouira harbor seared with fresh coriander, smoked paprika, garlic, cumin, and roasted cherry tomatoes.',
     price_cents: 3400,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: false,
     is_vegan: false,
     is_gluten_free: true,
@@ -433,7 +433,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
     description:
       'Fresh spear mint and wild verbena poured from antique silver teapots, accompanied by gazelle horns, orange blossom water, and honey almond briouats.',
     price_cents: 1200,
-    currency: 'EUR',
+    currency: 'IDR',
     is_vegetarian: true,
     is_vegan: false,
     is_gluten_free: false,
@@ -447,7 +447,7 @@ export const initialMenuItems: RestaurantMenuItem[] = [
 export const initialFacilities: Facility[] = [
   {
     id: 'fac-1',
-    name: 'Les Bains de Médina Hammam & Spa',
+    name: 'Les Bains de Médina Fasilitas',
     tagline: 'Purification in Ancient Warm Marble Chambers',
     description:
       'Indulge in time-honored traditional rituals featuring black soap body wraps, eucalyptus steam rooms, argan oil massages, and private marble soaking baths.',
@@ -474,7 +474,7 @@ export const initialFacilities: Facility[] = [
     name: 'Starlight Rooftop Terrace & Lounge',
     tagline: 'Sunset Cocktails Over the Call to Prayer',
     description:
-      'Savor handcrafted botanic cocktails and Moroccan wines while watching the sun sink behind the Koutoubia minaret and the Atlas Mountain peaks.',
+      'Savor handcrafted botanic cocktails and Indonesia wines while watching the sun sink behind the Koutoubia minaret and the Atlas Mountain peaks.',
     icon_name: 'Moon',
     image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
     opening_hours: '16:00 - 00:00 Daily',
@@ -524,7 +524,7 @@ export const initialOffers: Offer[] = [
   },
 ];
 
-export const initialGalleryImages: GalleryImage[] = [
+export const initialGaleriImages: GaleriImage[] = [
   {
     id: 'gal-1',
     category: 'architecture',
@@ -578,12 +578,12 @@ export const initialGalleryImages: GalleryImage[] = [
     category: 'experiences',
     title: 'Private Medina Souk Tour',
     image_url: 'https://images.unsplash.com/photo-1509233725247-49e657c54213?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Guided excursion through Marrakech spice markets and weavers quarter',
+    caption: 'Guided excursion through Singkawang spice markets and weavers quarter',
     sort_order: 7,
   },
 ];
 
-export const initialGuestReviews: GuestReview[] = [
+export const initialTamuReviews: TamuReview[] = [
   {
     id: 'rev-1',
     guest_name: 'Eleanor & Marcus Vance',
@@ -603,9 +603,9 @@ export const initialGuestReviews: GuestReview[] = [
     origin_city: 'Geneva',
     country: 'Switzerland',
     rating: 5,
-    title: 'Unmatched hospitality and sublime Moroccan gastronomy',
+    title: 'Unmatched hospitality and sublime Indonesia gastronomy',
     comment:
-      'I have visited Marrakech twelve times, and Le Médina stands in a class of its own. Chef Fatima’s cooking class was a masterclass in subtlety, and the staff anticipates every wish before you can ask. Truly exceptional.',
+      'I have visited Singkawang twelve times, and Le Médina stands in a class of its own. Chef Fatima’s cooking class was a masterclass in subtlety, and the staff anticipates every wish before you can ask. Truly exceptional.',
     stay_date: '2026-10-02',
     is_verified: true,
     is_featured: true,

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getReservationByCode, getSiteSettings } from '../../../lib/data/store';
+import { getReservationByCode, getSitePengaturan } from '../../../lib/data/store';
 import { formatPrice } from '../../../lib/utils';
 import {
   CheckCircle,
@@ -24,13 +24,13 @@ export const revalidate = 0;
 export default async function ConfirmationPage({ params }: ConfirmationPageProps) {
   const { code } = params;
   const reservation = await getReservationByCode(code);
-  const siteSettings = await getSiteSettings();
+  const sitePengaturan = await getSitePengaturan();
 
   if (!reservation) {
     return notFound();
   }
 
-  const cleanWhatsAppNumber = siteSettings.whatsapp.replace(/[^0-9]/g, '');
+  const cleanWhatsAppNumber = sitePengaturan.whatsapp.replace(/[^0-9]/g, '');
   const whatsAppText = encodeURIComponent(
     `Salam! I am confirming reservation ${reservation.reservation_code} for ${reservation.guest_name} from ${reservation.check_in} to ${reservation.check_out}. Please assist with my arrival details.`
   );
@@ -46,7 +46,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-forest hover:text-gold transition-colors font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Return to Home</span>
+            <span>Kembali ke Beranda</span>
           </Link>
         </div>
 
@@ -59,18 +59,18 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             </div>
 
             <span className="text-xs uppercase tracking-[0.25em] text-gold-300 font-bold block mb-1">
-              Confirmed Booking Details
+              Detail Reservasi
             </span>
             <h1 className="font-editorial text-3xl sm:text-4xl font-bold text-ivory mb-2">
-              Marhaban, {reservation.guest_name}
+              Halo, {reservation.guest_name}
             </h1>
             <p className="text-xs sm:text-sm text-ivory-200/90 font-light max-w-md mx-auto">
-              We look forward to welcoming you to our serene Andalusian sanctuary in the heart of Marrakech.
+              We look forward to welcoming you to our serene Andalusian sanctuary in the heart of Singkawang.
             </p>
 
             {/* Code Badge */}
             <div className="mt-6 inline-block bg-forest-950/90 px-6 py-2.5 rounded-full border border-gold/40">
-              <span className="text-xs text-ivory-300 mr-2">Reservation Code:</span>
+              <span className="text-xs text-ivory-300 mr-2">Kode Reservasi:</span>
               <span className="font-mono text-lg font-bold text-gold tracking-widest">
                 {reservation.reservation_code}
               </span>
@@ -79,7 +79,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
           {/* Details Content */}
           <div className="p-6 sm:p-10 space-y-8">
-            {/* Status & Overview */}
+            {/* Status & Ringkasan */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-ivory p-4 rounded-xl border border-bordercolor text-xs">
               <div>
                 <span className="text-mutedgray block">Status</span>
@@ -90,7 +90,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               <div>
                 <span className="text-mutedgray block">Check-in</span>
                 <strong className="text-forest block mt-0.5">{reservation.check_in}</strong>
-                <span className="text-[10px] text-mutedgray">From 15:00</span>
+                <span className="text-[10px] text-mutedgray">Mulai dari 15:00</span>
               </div>
               <div>
                 <span className="text-mutedgray block">Check-out</span>
@@ -98,7 +98,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                 <span className="text-[10px] text-mutedgray">Until 12:00</span>
               </div>
               <div>
-                <span className="text-mutedgray block">Total Stay</span>
+                <span className="text-mutedgray block">Total Biaya</span>
                 <strong className="text-forest text-sm font-editorial font-bold block mt-0.5">
                   {formatPrice(reservation.total_amount_cents / 100, reservation.currency)}
                 </strong>
@@ -113,11 +113,11 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                   Assigned Quarters
                 </span>
                 <h3 className="font-editorial text-xl font-bold text-forest">
-                  {reservation.room_type?.name || 'Selected Moroccan Suite'}
+                  {reservation.room_type?.name || 'Selected Indonesia Suite'}
                 </h3>
                 <p className="text-xs text-mutedgray mt-1">
-                  Assigned Chamber: <strong>{reservation.assigned_room_number || 'Suite 101'}</strong> • {reservation.adults} Adults
-                  {reservation.children > 0 ? `, ${reservation.children} Children` : ''}
+                  Assigned Chamber: <strong>{reservation.assigned_room_number || 'Suite 101'}</strong> • {reservation.adults} Dewasa
+                  {reservation.children > 0 ? `, ${reservation.children} Anak-anak` : ''}
                 </p>
               </div>
 
@@ -128,14 +128,14 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               </div>
             </div>
 
-            {/* Arrival & Medina Navigation */}
+            {/* Kedatangan & Informasi Lokasi */}
             <div className="bg-ivory rounded-xl p-6 border border-bordercolor space-y-3 text-xs text-charcoal/80">
               <h4 className="font-editorial text-base font-bold text-forest flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-gold" />
-                <span>Arrival & Concierge Luggage Escort</span>
+                <span>Kedatangan & Concierge Luggage Escort</span>
               </h4>
               <p className="leading-relaxed">
-                Hôtel Le Médina is located in a quiet pedestrian alley in the Medina: <strong>{siteSettings.address}</strong>. Cars cannot enter the alleyway directly.
+                Hôtel Le Médina is located in a quiet pedestrian alley in the Medina: <strong>{sitePengaturan.address}</strong>. Cars cannot enter the alleyway directly.
               </p>
               <p className="leading-relaxed">
                 If arriving by taxi, request drop-off at <strong>Bab Agnaou</strong> or <strong>Place des Ferblantiers</strong>. If you require our private chauffeur or a riad luggage porter, please message us on WhatsApp with your arrival time.
@@ -155,8 +155,8 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               </a>
               <p className="text-[11px] text-mutedgray mt-2">
                 Need urgent assistance? Call us directly at{' '}
-                <a href={`tel:${siteSettings.phone}`} className="text-forest font-semibold underline">
-                  {siteSettings.phone}
+                <a href={`tel:${sitePengaturan.phone}`} className="text-forest font-semibold underline">
+                  {sitePengaturan.phone}
                 </a>
               </p>
             </div>

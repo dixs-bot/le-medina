@@ -15,15 +15,15 @@ const sansFont = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Hôtel Le Médina & Resto | Luxury Moroccan Haven in Marrakech',
+  title: 'Hotel Le Medina & Resto | Hotel dan Restoran di Singkawang',
   description:
-    'Experience timeless Andalusian-Moroccan elegance, bespoke riad hospitality, gourmet dining, and restorative wellness in the historic heart of Marrakech.',
+    'Nikmati kenyamanan menginap, layanan ramah, pilihan hidangan restoran, dan fasilitas hotel di Singkawang, Kalimantan Barat.',
   keywords: [
     'Hotel Le Medina',
-    'Marrakech luxury riad',
-    'Boutique hotel Marrakech',
-    'Moroccan fine dining',
-    'Riad suites Marrakech',
+    'hotel Singkawang',
+    'hotel Kalimantan Barat',
+    'restoran Singkawang',
+    'penginapan Singkawang',
   ],
 };
 
@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${serifFont.variable} ${sansFont.variable} scroll-smooth`}>
+    <html lang="id" className={`${serifFont.variable} ${sansFont.variable} scroll-smooth`}>
       <body className="bg-ivory text-charcoal font-sans antialiased min-h-screen flex flex-col selection:bg-gold selection:text-white">
         {children}
       </body>

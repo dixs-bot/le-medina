@@ -30,66 +30,66 @@ export default function Footer() {
               HÔTEL LE MÉDINA
             </span>
             <span className="text-xs tracking-[0.3em] uppercase text-gold-400 font-medium block mb-4">
-              & Resto • Marrakech
+              & Resto • Singkawang
             </span>
             <p className="text-xs text-ivory-300 leading-relaxed max-w-sm mb-6">
-              An intimate sanctuary of Moroccan zellige tilework, Andalusian courtyards, Michelin-inspired gastronomy, and restorative hammam baths in the historic Medina of Marrakech.
+              An intimate sanctuary of Indonesia zellige tilework, Andalusian courtyards, Michelin-inspired gastronomy, and restorative hammam baths in the historic Medina of Singkawang.
             </p>
 
             <div className="flex items-center gap-2 text-xs text-gold-300">
               <ShieldCheck className="w-4 h-4 text-gold" />
-              <span>Direct Booking Best Rate & VIP Hammam Guarantee</span>
+              <span>Layanan Pemesanan Langsung</span>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-gold-400 font-semibold mb-4">
-              The Hotel
+              Tentang Hotel
             </h4>
             <ul className="space-y-2.5 text-xs text-ivory-300">
               <li>
                 <a href="#suites" className="hover:text-gold transition-colors">
-                  Suites & Residences
+                  Kamar & Residences
                 </a>
               </li>
               <li>
                 <a href="#about" className="hover:text-gold transition-colors">
-                  Our Riad Heritage
+                  Tentang Kami
                 </a>
               </li>
               <li>
                 <a href="#dining" className="hover:text-gold transition-colors">
-                  Le Médina Resto
+                  Restoran Le Medina
                 </a>
               </li>
               <li>
                 <a href="#facilities" className="hover:text-gold transition-colors">
-                  Les Bains Hammam & Spa
+                  Les Bains Fasilitas
                 </a>
               </li>
               <li>
                 <a href="#offers" className="hover:text-gold transition-colors">
-                  Privileged Stays & Offers
+                  Penawaran Spesial & Offers
                 </a>
               </li>
               <li>
                 <a href="#gallery" className="hover:text-gold transition-colors">
-                  Photo Anthology
+                  Galeri Foto
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Contact Details */}
+          {/* Kontak Details */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-gold-400 font-semibold mb-4">
-              Concierge Desk
+              Layanan Tamu
             </h4>
             <div className="space-y-3 text-xs text-ivory-300">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
-                <span>42 Derb Sidi Bouloukate, Medina, Marrakech 40000, Morocco</span>
+                <span>Singkawang, Kalimantan Barat, Indonesia</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-gold flex-shrink-0" />
@@ -108,7 +108,7 @@ export default function Footer() {
                   href="/admin"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold hover:text-gold-300 uppercase tracking-wider underline underline-offset-4"
                 >
-                  Admin & Staff Portal →
+                  Portal Admin dan Staf →
                 </Link>
               </div>
             </div>
@@ -117,7 +117,7 @@ export default function Footer() {
           {/* Newsletter Column */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-gold-400 font-semibold mb-4">
-              Medina Dispatch
+              Info Hotel
             </h4>
             <p className="text-xs text-ivory-300 leading-relaxed mb-4">
               Receive private invitations to seasonal culinary festivals, new suite unveilings, and cultural salon gatherings.
@@ -128,7 +128,7 @@ export default function Footer() {
                 Shukran for joining our guest circle.
               </div>
             ) : (
-              <form onSubmit={handleSubscribe} className="space-y-2">
+              <form onKirim={handleSubscribe} className="space-y-2">
                 <input
                   type="email"
                   placeholder="Your email address"
@@ -150,7 +150,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-ivory-400 gap-4">
-          <p>© 2026 Hôtel Le Médina & Resto. All rights reserved. Handcrafted in Marrakech.</p>
+          <p>© 2026 Hôtel Le Médina & Resto. Hak cipta dilindungi. Handcrafted di Singkawang.</p>
 
           <button
             onClick={scrollToTop}

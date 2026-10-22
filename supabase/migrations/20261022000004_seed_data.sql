@@ -6,8 +6,8 @@
 -- 1. Profiles & Roles
 INSERT INTO public.profiles (id, full_name, email, phone, country)
 VALUES 
-    ('11111111-1111-1111-1111-111111111111', 'Laila Benjelloun', 'admin@lemedinahotel.com', '+212 524 38 90 00', 'Morocco'),
-    ('22222222-2222-2222-2222-222222222222', 'Youssef Alami', 'reservations@lemedinahotel.com', '+212 524 38 90 01', 'Morocco'),
+    ('11111111-1111-1111-1111-111111111111', 'Laila Benjelloun', 'admin@lemedinahotel.com', '+212 524 38 90 00', 'Indonesia'),
+    ('22222222-2222-2222-2222-222222222222', 'Youssef Alami', 'reservations@lemedinahotel.com', '+212 524 38 90 01', 'Indonesia'),
     ('33333333-3333-3333-3333-333333333333', 'Sophia Laurent', 'editor@lemedinahotel.com', '+33 6 12 34 56 78', 'France')
 ON CONFLICT (id) DO NOTHING;
 
@@ -18,14 +18,14 @@ VALUES
     ('33333333-3333-3333-3333-333333333333', 'content_editor')
 ON CONFLICT (user_id, role) DO NOTHING;
 
--- 2. Site Settings
+-- 2. Site Pengaturan
 INSERT INTO public.site_settings (key, value, description)
 VALUES 
     ('hotel_info', '{
         "name": "Hôtel Le Médina & Resto",
-        "tagline": "An Andalusian-Moroccan Sanctuary of Timeless Grace",
+        "tagline": "Hotel nyaman untuk pengalaman menginap berkesan",
         "stars": 5,
-        "address": "42 Derb Sidi Bouloukate, Medina, Marrakech 40000, Morocco",
+        "address": "Singkawang, Kalimantan Barat, Indonesia",
         "phone": "+212 524 38 90 00",
         "whatsapp": "+212661389000",
         "email": "concierge@lemedinahotel.com",
@@ -34,13 +34,13 @@ VALUES
         "currency": "EUR"
     }'::jsonb, 'General hotel contact and operational info'),
     ('social_links', '{
-        "instagram": "https://instagram.com/lemedinamarrakech",
-        "facebook": "https://facebook.com/lemedinamarrakech",
+        "instagram": "https://instagram.com/lemedinasingkawang",
+        "facebook": "https://facebook.com/lemedinasingkawang",
         "tripadvisor": "https://tripadvisor.com"
     }'::jsonb, 'Public social media URLs')
 ON CONFLICT (key) DO NOTHING;
 
--- 3. Room Types
+-- 3. Tipe Kamars
 INSERT INTO public.room_types (id, name, slug, tagline, description, base_price_cents, currency, max_adults, max_children, size_sqm, bed_type, view_type, amenities, sort_order)
 VALUES
     (
@@ -64,7 +64,7 @@ VALUES
         'Majorelle Garden Deluxe',
         'majorelle-garden-deluxe',
         'Vibrant cobalt-tinted sanctuary overlooking fragrant citrus orchards',
-        'Inspired by the legendary botanical gardens of Marrakech, this light-filled haven boasts vaulted arches, custom brass lanterns, bespoke wrought-iron furnishings, and a serene reading nook overlooking our private orange blossom garden.',
+        'Inspired by the legendary botanical gardens of Singkawang, this light-filled haven boasts vaulted arches, custom brass lanterns, bespoke wrought-iron furnishings, and a serene reading nook overlooking our private orange blossom garden.',
         31000,
         'EUR',
         2,
@@ -95,7 +95,7 @@ VALUES
         'd4444444-dddd-dddd-dddd-dddddddddddd',
         'Riad Jasmine Heritage Room',
         'riad-jasmine-heritage-room',
-        'Intimate and romantic jewel box celebrating Moroccan craftsmanship',
+        'Intimate and romantic jewel box celebrating Indonesia craftsmanship',
         'Warm terracotta tones, hand-hammered copper sconces, and woven Fez kilims create an intimate and restful cocoon for couples seeking authentic serenity within the historic Medina.',
         22000,
         'EUR',
@@ -104,12 +104,12 @@ VALUES
         34.0,
         'Queen Artisanal Bed',
         'Quiet Jasmine Patio',
-        ARRAY['Handcrafted Tadelakt Shower', 'Organic Herb Teas', 'Complimentary Moroccan Breakfast', 'Safe & Climate Control', 'Marshall Bluetooth Speaker'],
+        ARRAY['Handcrafted Tadelakt Shower', 'Organic Herb Teas', 'Complimentary Indonesia Breakfast', 'Safe & Climate Control', 'Marshall Bluetooth Speaker'],
         4
     )
 ON CONFLICT (id) DO NOTHING;
 
--- 4. Physical Rooms Inventory
+-- 4. Physical Kamar Inventory
 INSERT INTO public.rooms (id, room_type_id, room_number, floor, wing, status)
 VALUES
     ('a0010000-0000-0000-0000-000000000001', 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Suite 101', 1, 'Courtyard Wing', 'available'),
@@ -133,7 +133,7 @@ VALUES
     ('d4444444-dddd-dddd-dddd-dddddddddddd', 'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80', 'Riad Jasmine Heritage bedroom warm lighting', true, 1)
 ON CONFLICT (id) DO NOTHING;
 
--- 6. Seasonal Room Rates
+-- 6. Seasonal Room Tarif
 INSERT INTO public.room_rates (room_type_id, rate_name, start_date, end_date, price_cents, min_stay_nights)
 VALUES
     ('a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Winter Holiday Oasis High Season', '2026-12-20', '2027-01-05', 52000, 3),
@@ -143,7 +143,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 7. Restaurant Categories
 INSERT INTO public.restaurant_categories (id, name, slug, description, sort_order)
 VALUES
-    ('e1111111-eeee-eeee-eeee-eeeeeeeeeeee', 'Entrées & Moroccan Mezze', 'mezze', 'Delicate salads, savory pastries and spiced dips prepared fresh at dawn', 1),
+    ('e1111111-eeee-eeee-eeee-eeeeeeeeeeee', 'Entrées & Indonesia Mezze', 'mezze', 'Delicate salads, savory pastries and spiced dips prepared fresh at dawn', 1),
     ('e2222222-eeee-eeee-eeee-eeeeeeeeeeee', 'Artisanal Tagines & Couscous', 'tagines', 'Slow-cooked earthenware pots infused with saffron, preserved lemon and dried fruits', 2),
     ('e3333333-eeee-eeee-eeee-eeeeeeeeeeee', 'Wood-Fired Grills & Specialties', 'grills', 'Prime Atlas meats and Atlantic seafood grilled over charcoal olive wood', 3),
     ('e4444444-eeee-eeee-eeee-eeeeeeeeeeee', 'Pastries & Infusions', 'desserts', 'Almond briouats, honey-drizzled pastillas and hand-poured mint tea ceremonies', 4)
@@ -155,7 +155,7 @@ VALUES
     (
         'e1111111-eeee-eeee-eeee-eeeeeeeeeeee',
         'Le Médina Royal Mezze Platter',
-        'Seven classical Moroccan salads including Zaalouk eggplant, spiced beetroot, Mechouia grilled peppers, and caramelized pumpkin with sesame.',
+        'Seven classical Indonesia salads including Zaalouk eggplant, spiced beetroot, Mechouia grilled peppers, and caramelized pumpkin with sesame.',
         1800,
         true,
         true,
@@ -235,7 +235,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.facilities (name, tagline, description, icon_name, image_url, opening_hours, sort_order)
 VALUES
     (
-        'Les Bains de Médina Hammam & Spa',
+        'Les Bains de Médina Fasilitas',
         'Purification in Ancient Warm Marble Chambers',
         'Indulge in time-honored traditional rituals featuring black soap body wraps, eucalyptus steam rooms, argan oil massages, and private marble soaking baths.',
         'sparkles',
@@ -255,7 +255,7 @@ VALUES
     (
         'Starlight Rooftop Terrace & Lounge',
         'Sunset Cocktails Over the Call to Prayer',
-        'Savor handcrafted botanic cocktails and Moroccan wines while watching the sun sink behind the Koutoubia minaret and the Atlas Mountain peaks.',
+        'Savor handcrafted botanic cocktails and Indonesia wines while watching the sun sink behind the Koutoubia minaret and the Atlas Mountain peaks.',
         'moon',
         'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80',
         '16:00 - 00:00 Daily',
@@ -272,7 +272,7 @@ VALUES
     )
 ON CONFLICT (id) DO NOTHING;
 
--- 10. Special Offers
+-- 10. Promo Spesial
 INSERT INTO public.offers (title, code, tagline, description, discount_percentage, valid_from, valid_to, image_url, is_active)
 VALUES
     (
@@ -299,7 +299,7 @@ VALUES
     )
 ON CONFLICT (id) DO NOTHING;
 
--- 11. Gallery Images
+-- 11. Galeri Images
 INSERT INTO public.gallery_images (category, title, image_url, caption, sort_order)
 VALUES
     ('architecture', 'Central Marble Courtyard', 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1200&q=80', 'Intricate stucco carving and zellige tiling around the courtyard pool', 1),
@@ -308,10 +308,10 @@ VALUES
     ('dining', 'Courtyard Candlelit Dinner', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80', 'Romantic evening dining beside the illuminated emerald water basin', 4),
     ('dining', 'Artisanal Tagine Presentation', 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?auto=format&fit=crop&w=1200&q=80', 'Steaming slow-cooked lamb and fig tagine served hot from the coals', 5),
     ('wellness', 'The Royal Marble Hammam', 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=80', 'Private steam room carved from solid warm grey marble and tadelakt', 6),
-    ('experiences', 'Private Medina Souk Tour', 'https://images.unsplash.com/photo-1509233725247-49e657c54213?auto=format&fit=crop&w=1200&q=80', 'Guided excursion through Marrakech spice markets and weavers quarter', 7)
+    ('experiences', 'Private Medina Souk Tour', 'https://images.unsplash.com/photo-1509233725247-49e657c54213?auto=format&fit=crop&w=1200&q=80', 'Guided excursion through Singkawang spice markets and weavers quarter', 7)
 ON CONFLICT (id) DO NOTHING;
 
--- 12. Guest Reviews
+-- 12. Tamu Reviews
 INSERT INTO public.guest_reviews (guest_name, origin_city, country, rating, title, comment, stay_date, is_verified, is_featured)
 VALUES
     (
@@ -330,8 +330,8 @@ VALUES
         'Geneva',
         'Switzerland',
         5,
-        'Unmatched hospitality and sublime Moroccan gastronomy',
-        'I have visited Marrakech twelve times, and Le Médina stands in a class of its own. Chef Fatima’s cooking class was a masterclass in subtlety, and the staff anticipates every wish before you can ask. Truly exceptional.',
+        'Unmatched hospitality and sublime Indonesia gastronomy',
+        'I have visited Singkawang twelve times, and Le Médina stands in a class of its own. Chef Fatima’s cooking class was a masterclass in subtlety, and the staff anticipates every wish before you can ask. Truly exceptional.',
         '2026-10-02',
         true,
         true

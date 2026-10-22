@@ -9,7 +9,7 @@ import {
   Room,
   RestaurantMenuItem,
   RestaurantCategory,
-  SiteSettings,
+  SitePengaturan,
   Offer,
   Role,
   ReservationStatus,
@@ -21,8 +21,8 @@ import {
   BedDouble,
   DollarSign,
   UtensilsCrossed,
-  Settings,
-  Search,
+  Pengaturan,
+  Cari,
   Filter,
   CheckCircle,
   Clock,
@@ -40,23 +40,23 @@ import {
 
 interface AdminDashboardClientProps {
   initialMetrics: AdminMetrics;
-  initialReservations: Reservation[];
+  initialReservasi: Reservation[];
   roomTypes: RoomType[];
   rooms: Room[];
   initialMenuItems: RestaurantMenuItem[];
   categories: RestaurantCategory[];
-  initialSiteSettings: SiteSettings;
+  initialSitePengaturan: SitePengaturan;
   offers: Offer[];
 }
 
 export default function AdminDashboardClient({
   initialMetrics,
-  initialReservations,
+  initialReservasi,
   roomTypes,
   rooms,
   initialMenuItems,
   categories,
-  initialSiteSettings,
+  initialSitePengaturan,
   offers,
 }: AdminDashboardClientProps) {
   // Navigation tabs
@@ -67,9 +67,9 @@ export default function AdminDashboardClient({
   // RBAC active role
   const [currentRole, setCurrentRole] = useState<Role>('super_admin');
 
-  // Reservations state
-  const [reservations, setReservations] = useState<Reservation[]>(initialReservations);
-  const [resSearch, setResSearch] = useState('');
+  // Reservasi state
+  const [reservations, setReservasi] = useState<Reservation[]>(initialReservasi);
+  const [resCari, setResCari] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
 
@@ -77,18 +77,18 @@ export default function AdminDashboardClient({
   const [menuItems, setMenuItems] = useState<RestaurantMenuItem[]>(initialMenuItems);
 
   // Site settings state
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(initialSiteSettings);
-  const [settingsSuccess, setSettingsSuccess] = useState(false);
+  const [sitePengaturan, setSitePengaturan] = useState<SitePengaturan>(initialSitePengaturan);
+  const [settingsSuccess, setPengaturanSuccess] = useState(false);
 
   // Filtered reservations
-  const filteredReservations = reservations.filter((r) => {
+  const filteredReservasi = reservations.filter((r) => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    const matchesSearch =
-      !resSearch ||
-      r.reservation_code.toLowerCase().includes(resSearch.toLowerCase()) ||
-      r.guest_name.toLowerCase().includes(resSearch.toLowerCase()) ||
-      r.guest_email.toLowerCase().includes(resSearch.toLowerCase());
-    return matchesStatus && matchesSearch;
+    const matchesCari =
+      !resCari ||
+      r.reservation_code.toLowerCase().includes(resCari.toLowerCase()) ||
+      r.guest_name.toLowerCase().includes(resCari.toLowerCase()) ||
+      r.guest_email.toLowerCase().includes(resCari.toLowerCase());
+    return matchesStatus && matchesCari;
   });
 
   // Handle status update
@@ -104,7 +104,7 @@ export default function AdminDashboardClient({
       });
 
       if (response.ok) {
-        setReservations((prev) =>
+        setReservasi((prev) =>
           prev.map((r) => (r.id === resId ? { ...r, status: newStatus } : r))
         );
         if (selectedRes && selectedRes.id === resId) {
@@ -126,7 +126,7 @@ export default function AdminDashboardClient({
   };
 
   // Role permissions helpers
-  const canManageReservations =
+  const canManageReservasi =
     currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'reservation_staff';
   const canManageContent =
     currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'content_editor';
@@ -141,7 +141,7 @@ export default function AdminDashboardClient({
             className="flex items-center gap-1.5 text-xs text-gold-300 hover:text-white uppercase tracking-wider font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Public Site</span>
+            <span>Halaman Publik</span>
           </Link>
           <span className="text-forest-700">|</span>
           <div className="flex flex-col">
@@ -149,7 +149,7 @@ export default function AdminDashboardClient({
               HÔTEL LE MÉDINA
             </span>
             <span className="text-[10px] uppercase tracking-widest text-gold-400 font-semibold mt-0.5">
-              Management CMS & Concierge Portal
+              Panel Pengelolaan Hotel
             </span>
           </div>
         </div>
@@ -224,7 +224,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <BedDouble className="w-4 h-4" />
-              <span>Suites & Inventory</span>
+              <span>Kamar & Inventory</span>
             </button>
 
             <button
@@ -236,7 +236,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>Rates & Rules</span>
+              <span>Tarif & Rules</span>
             </button>
 
             <button
@@ -259,7 +259,7 @@ export default function AdminDashboardClient({
                   : 'text-ivory-200 hover:bg-forest-800'
               }`}
             >
-              <Settings className="w-4 h-4" />
+              <Pengaturan className="w-4 h-4" />
               <span>Site & Operations</span>
             </button>
           </div>
@@ -272,7 +272,7 @@ export default function AdminDashboardClient({
             <div className="space-y-8 animate-fadeIn">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Executive Operations Overview
+                  Executive Operations Ringkasan
                 </h1>
                 <p className="text-xs text-mutedgray">
                   Real-time occupancy, revenue yield, and direct reservation pipeline.
@@ -284,12 +284,12 @@ export default function AdminDashboardClient({
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Pending Approvals
+                      Menunggu konfirmasi Approvals
                     </span>
                     <Clock className="w-4 h-4 text-status-warning" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-status-warning">
-                    {initialMetrics.pendingReservations}
+                    {initialMetrics.pendingReservasi}
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
                     Requires front-desk deposit confirmation
@@ -299,15 +299,15 @@ export default function AdminDashboardClient({
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Confirmed Bookings
+                      Dikonfirmasi Bookings
                     </span>
                     <CheckCircle className="w-4 h-4 text-status-success" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-forest">
-                    {initialMetrics.confirmedReservations}
+                    {initialMetrics.confirmedReservasi}
                   </div>
                   <span className="text-[11px] text-status-success font-medium mt-1 block">
-                    Total: {initialMetrics.totalReservations} direct guest stays
+                    Total: {initialMetrics.totalReservasi} direct guest stays
                   </span>
                 </div>
 
@@ -346,7 +346,7 @@ export default function AdminDashboardClient({
               <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-editorial text-lg font-bold text-forest">
-                    Latest Inbound Guest Bookings
+                    Latest Inbound Tamu Bookings
                   </h3>
                   <button
                     onClick={() => setActiveTab('reservations')}
@@ -362,7 +362,7 @@ export default function AdminDashboardClient({
                     <thead>
                       <tr className="border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
                         <th className="py-2.5">Code</th>
-                        <th>Guest</th>
+                        <th>Tamu</th>
                         <th>Dates</th>
                         <th>Suite</th>
                         <th>Total</th>
@@ -417,19 +417,19 @@ export default function AdminDashboardClient({
                     Reservation Ledger & Room Assignment
                   </h1>
                   <p className="text-xs text-mutedgray">
-                    Manage guest lifecycle: Pending → Confirmed → Checked In → Checked Out.
+                    Manage guest lifecycle: Menunggu konfirmasi → Dikonfirmasi → Checked In → Checked Out.
                   </p>
                 </div>
 
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
+                    <Cari className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
                     <input
                       type="text"
-                      placeholder="Search guest or code..."
-                      value={resSearch}
-                      onChange={(e) => setResSearch(e.target.value)}
+                      placeholder="Cari guest or code..."
+                      value={resCari}
+                      onChange={(e) => setResCari(e.target.value)}
                       className="pl-8 pr-3 py-2 rounded bg-ivory border border-bordercolor text-xs focus:ring-1 focus:ring-gold"
                     />
                   </div>
@@ -440,23 +440,23 @@ export default function AdminDashboardClient({
                     className="px-3 py-2 rounded bg-ivory border border-bordercolor text-xs focus:ring-1 focus:ring-gold"
                   >
                     <option value="all">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
+                    <option value="pending">Menunggu konfirmasi</option>
+                    <option value="confirmed">Dikonfirmasi</option>
                     <option value="checked_in">Checked In</option>
                     <option value="checked_out">Checked Out</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="cancelled">Batalled</option>
                   </select>
                 </div>
               </div>
 
-              {/* Reservations Table */}
+              {/* Reservasi Table */}
               <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-ivory-200/50 border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
                       <tr>
                         <th className="p-4">Code</th>
-                        <th className="p-4">Guest Info</th>
+                        <th className="p-4">Tamu Info</th>
                         <th className="p-4">Stay Dates</th>
                         <th className="p-4">Room & Chamber</th>
                         <th className="p-4">Total</th>
@@ -465,7 +465,7 @@ export default function AdminDashboardClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-bordercolor">
-                      {filteredReservations.map((res) => (
+                      {filteredReservasi.map((res) => (
                         <tr key={res.id} className="hover:bg-ivory-100/50">
                           <td className="p-4 font-mono font-bold text-forest">
                             {res.reservation_code}
@@ -492,7 +492,7 @@ export default function AdminDashboardClient({
                             {formatPrice(res.total_amount_cents / 100, res.currency)}
                           </td>
                           <td className="p-4">
-                            {canManageReservations ? (
+                            {canManageReservasi ? (
                               <select
                                 value={res.status}
                                 onChange={(e) =>
@@ -508,11 +508,11 @@ export default function AdminDashboardClient({
                                     : 'bg-gray-100 text-gray-700 border-gray-300'
                                 }`}
                               >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
+                                <option value="pending">Menunggu konfirmasi</option>
+                                <option value="confirmed">Dikonfirmasi</option>
                                 <option value="checked_in">Checked In</option>
                                 <option value="checked_out">Checked Out</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value="cancelled">Batalled</option>
                               </select>
                             ) : (
                               <span className="capitalize font-bold text-mutedgray">
@@ -542,7 +542,7 @@ export default function AdminDashboardClient({
                     <div className="flex justify-between items-start border-b border-bordercolor pb-3">
                       <div>
                         <span className="text-xs text-gold-600 font-bold uppercase">
-                          Booking Details
+                          Detail Pemesanan
                         </span>
                         <h3 className="font-editorial text-2xl font-bold text-forest">
                           {selectedRes.reservation_code}
@@ -558,11 +558,11 @@ export default function AdminDashboardClient({
 
                     <div className="grid grid-cols-2 gap-4 text-xs">
                       <div>
-                        <span className="text-mutedgray block">Guest Name</span>
+                        <span className="text-mutedgray block">Tamu Name</span>
                         <strong className="text-forest text-sm">{selectedRes.guest_name}</strong>
                       </div>
                       <div>
-                        <span className="text-mutedgray block">Contact</span>
+                        <span className="text-mutedgray block">Kontak</span>
                         <span>{selectedRes.guest_email}</span>
                         <br />
                         <span>{selectedRes.guest_phone}</span>
@@ -581,7 +581,7 @@ export default function AdminDashboardClient({
 
                     {selectedRes.special_requests && (
                       <div className="bg-ivory-100 p-3 rounded text-xs text-charcoal">
-                        <strong className="block text-forest mb-1">Guest Special Requests:</strong>
+                        <strong className="block text-forest mb-1">Tamu Permintaan Khusus:</strong>
                         <p>{selectedRes.special_requests}</p>
                       </div>
                     )}
@@ -671,7 +671,7 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Seasonal Rates & Length of Stay Rules
+                  Seasonal Tarif & Length of Stay Rules
                 </h1>
                 <p className="text-xs text-mutedgray">
                   Custom seasonal rate windows, high-season holiday multipliers, and minimum stay requirements.
@@ -737,7 +737,7 @@ export default function AdminDashboardClient({
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                    Le Médina Resto CMS
+                    Restoran Le Medina CMS
                   </h1>
                   <p className="text-xs text-mutedgray">
                     Live menu management, availability toggles, and culinary classifications.
@@ -753,7 +753,7 @@ export default function AdminDashboardClient({
                       <th className="p-4">Description</th>
                       <th className="p-4">Price</th>
                       <th className="p-4">Dietary Attributes</th>
-                      <th className="p-4">Available</th>
+                      <th className="p-4">Tersedia</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-bordercolor">
@@ -765,7 +765,7 @@ export default function AdminDashboardClient({
                           </strong>
                           {item.is_signature && (
                             <span className="text-[10px] text-gold-600 font-bold uppercase">
-                              ★ Chef Signature
+                              ★ Chef Andalan
                             </span>
                           )}
                         </td>
@@ -794,7 +794,7 @@ export default function AdminDashboardClient({
                                 : 'bg-gray-200 text-gray-600'
                             }`}
                           >
-                            {item.is_available ? 'Available' : 'Sold Out'}
+                            {item.is_available ? 'Tersedia' : 'Sold Out'}
                           </button>
                         </td>
                       </tr>
@@ -810,7 +810,7 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn max-w-3xl">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Site Operations & Concierge Settings
+                  Site Operations & Concierge Pengaturan
                 </h1>
                 <p className="text-xs text-mutedgray">
                   Configure live WhatsApp concierge numbers, hotel address, and operational check-in hours.
@@ -832,9 +832,9 @@ export default function AdminDashboardClient({
                     </label>
                     <input
                       type="text"
-                      value={siteSettings.name}
+                      value={sitePengaturan.name}
                       onChange={(e) =>
-                        setSiteSettings({ ...siteSettings, name: e.target.value })
+                        setSitePengaturan({ ...sitePengaturan, name: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded bg-ivory-50 border border-bordercolor"
                     />
@@ -846,9 +846,9 @@ export default function AdminDashboardClient({
                     </label>
                     <input
                       type="text"
-                      value={siteSettings.whatsapp}
+                      value={sitePengaturan.whatsapp}
                       onChange={(e) =>
-                        setSiteSettings({ ...siteSettings, whatsapp: e.target.value })
+                        setSitePengaturan({ ...sitePengaturan, whatsapp: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded bg-ivory-50 border border-bordercolor font-mono"
                     />
@@ -860,9 +860,9 @@ export default function AdminDashboardClient({
                     </label>
                     <input
                       type="text"
-                      value={siteSettings.phone}
+                      value={sitePengaturan.phone}
                       onChange={(e) =>
-                        setSiteSettings({ ...siteSettings, phone: e.target.value })
+                        setSitePengaturan({ ...sitePengaturan, phone: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded bg-ivory-50 border border-bordercolor"
                     />
@@ -874,9 +874,9 @@ export default function AdminDashboardClient({
                     </label>
                     <input
                       type="email"
-                      value={siteSettings.email}
+                      value={sitePengaturan.email}
                       onChange={(e) =>
-                        setSiteSettings({ ...siteSettings, email: e.target.value })
+                        setSitePengaturan({ ...sitePengaturan, email: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded bg-ivory-50 border border-bordercolor"
                     />
@@ -888,9 +888,9 @@ export default function AdminDashboardClient({
                     </label>
                     <input
                       type="text"
-                      value={siteSettings.address}
+                      value={sitePengaturan.address}
                       onChange={(e) =>
-                        setSiteSettings({ ...siteSettings, address: e.target.value })
+                        setSitePengaturan({ ...sitePengaturan, address: e.target.value })
                       }
                       className="w-full px-3 py-2 rounded bg-ivory-50 border border-bordercolor"
                     />
@@ -900,12 +900,12 @@ export default function AdminDashboardClient({
                 <div className="pt-4 flex justify-end">
                   <button
                     onClick={() => {
-                      setSettingsSuccess(true);
-                      setTimeout(() => setSettingsSuccess(false), 3000);
+                      setPengaturanSuccess(true);
+                      setTimeout(() => setPengaturanSuccess(false), 3000);
                     }}
                     className="px-6 py-2.5 rounded bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold transition-all shadow"
                   >
-                    Save Operational Settings
+                    Hemat Operational Pengaturan
                   </button>
                 </div>
               </div>

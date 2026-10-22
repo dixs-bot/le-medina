@@ -6,20 +6,20 @@ import { formatPrice } from '../lib/utils';
 import { Users, Maximize, BedDouble, Eye, Sparkles, Calendar, Filter, ArrowRight } from 'lucide-react';
 import RoomModal from './RoomModal';
 
-interface RoomsCatalogProps {
+interface KamarCatalogProps {
   rooms: RoomType[];
   onSelectRoomForBooking: (room: RoomType) => void;
 }
 
-export default function RoomsCatalog({
+export default function KamarCatalog({
   rooms,
   onSelectRoomForBooking,
-}: RoomsCatalogProps) {
+}: KamarCatalogProps) {
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [guestFilter, setGuestFilter] = useState<'all' | '2' | '3'>('all');
+  const [guestFilter, setTamuFilter] = useState<'all' | '2' | '3'>('all');
 
-  const filteredRooms = rooms.filter((r) => {
+  const filteredKamar = rooms.filter((r) => {
     if (guestFilter === '2') return r.max_adults === 2;
     if (guestFilter === '3') return r.max_adults >= 3;
     return true;
@@ -37,54 +37,54 @@ export default function RoomsCatalog({
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
           <div>
             <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
-              Private Quarters
+              Pilihan Kamar
             </span>
             <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest">
-              Suites & Royal Residences
+              Kamar & Royal Residences
             </h2>
           </div>
 
-          {/* Guest Filter Buttons */}
+          {/* Tamu Filter Buttons */}
           <div className="mt-6 md:mt-0 flex items-center gap-2">
             <span className="text-xs text-mutedgray uppercase tracking-wider mr-1 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> Filter by Capacity:
+              <Filter className="w-3.5 h-3.5" /> Filter Kapasitas:
             </span>
             <button
-              onClick={() => setGuestFilter('all')}
+              onClick={() => setTamuFilter('all')}
               className={`text-xs px-3 py-1.5 rounded-full transition-all font-medium ${
                 guestFilter === 'all'
                   ? 'bg-forest text-ivory shadow-sm'
                   : 'bg-ivory text-charcoal border border-bordercolor hover:border-gold'
               }`}
             >
-              All Suites ({rooms.length})
+              All Kamar ({rooms.length})
             </button>
             <button
-              onClick={() => setGuestFilter('2')}
+              onClick={() => setTamuFilter('2')}
               className={`text-xs px-3 py-1.5 rounded-full transition-all font-medium ${
                 guestFilter === '2'
                   ? 'bg-forest text-ivory shadow-sm'
                   : 'bg-ivory text-charcoal border border-bordercolor hover:border-gold'
               }`}
             >
-              2 Guests
+              2 Tamu
             </button>
             <button
-              onClick={() => setGuestFilter('3')}
+              onClick={() => setTamuFilter('3')}
               className={`text-xs px-3 py-1.5 rounded-full transition-all font-medium ${
                 guestFilter === '3'
                   ? 'bg-forest text-ivory shadow-sm'
                   : 'bg-ivory text-charcoal border border-bordercolor hover:border-gold'
               }`}
             >
-              3+ Guests
+              3+ Tamu
             </button>
           </div>
         </div>
 
-        {/* Suites Grid */}
+        {/* Kamar Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
-          {filteredRooms.map((room) => {
+          {filteredKamar.map((room) => {
             const primaryImage =
               room.images?.find((img) => img.is_primary)?.image_url ||
               room.images?.[0]?.image_url ||
@@ -112,7 +112,7 @@ export default function RoomsCatalog({
 
                     {/* Price Pill */}
                     <div className="absolute bottom-4 right-4 bg-ivory text-forest px-3.5 py-1.5 rounded shadow-lg border border-bordercolor text-right">
-                      <span className="text-xs text-mutedgray block -mb-1">From</span>
+                      <span className="text-xs text-mutedgray block -mb-1">Mulai dari</span>
                       <span className="font-editorial text-lg font-bold text-forest">
                         {formatPrice(room.base_price_cents / 100, room.currency)}
                       </span>
@@ -128,7 +128,7 @@ export default function RoomsCatalog({
                       </span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 text-gold" /> Up to {room.max_adults} Adults
+                        <Users className="w-3.5 h-3.5 text-gold" /> Maksimal {room.max_adults} Dewasa
                       </span>
                       <span>•</span>
                       <span className="flex items-center gap-1 truncate">
@@ -170,7 +170,7 @@ export default function RoomsCatalog({
                     onClick={() => handleOpenModal(room)}
                     className="flex-1 text-center py-2.5 px-4 rounded border border-forest text-forest hover:bg-forest hover:text-ivory text-xs uppercase tracking-widest font-semibold transition-all"
                   >
-                    View Details & Rates
+                    Lihat Detail & Tarif
                   </button>
                   <button
                     onClick={() => onSelectRoomForBooking(room)}

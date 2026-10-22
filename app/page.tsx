@@ -2,14 +2,14 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
 import About from '../components/About';
-import RoomsCatalog from '../components/RoomsCatalog';
+import KamarCatalog from '../components/KamarCatalog';
 import RestaurantSection from '../components/RestaurantSection';
 import FacilitiesSection from '../components/FacilitiesSection';
 import OffersSection from '../components/OffersSection';
-import GallerySection from '../components/GallerySection';
+import GaleriSection from '../components/GaleriSection';
 import ReviewsSection from '../components/ReviewsSection';
-import LocationSection from '../components/LocationSection';
-import ContactBookingSection from '../components/ContactBookingSection';
+import LokasiSection from '../components/LokasiSection';
+import KontakBookingSection from '../components/KontakBookingSection';
 import FloatingWhatsApp from '../components/FloatingWhatsApp';
 import Footer from '../components/Footer';
 
@@ -19,9 +19,9 @@ import {
   getRestaurantMenu,
   getFacilities,
   getOffers,
-  getGalleryImages,
-  getGuestReviews,
-  getSiteSettings,
+  getGaleriImages,
+  getTamuReviews,
+  getSitePengaturan,
 } from '../lib/data/store';
 import PublicInteractiveWrapper from '../components/PublicInteractiveWrapper';
 
@@ -36,16 +36,16 @@ export default async function HomePage() {
     offers,
     galleryImages,
     guestReviews,
-    siteSettings,
+    sitePengaturan,
   ] = await Promise.all([
     getRoomTypes(),
     getRestaurantCategories(),
     getRestaurantMenu(),
     getFacilities(),
     getOffers(),
-    getGalleryImages(),
-    getGuestReviews(),
-    getSiteSettings(),
+    getGaleriImages(),
+    getTamuReviews(),
+    getSitePengaturan(),
   ]);
 
   return (
@@ -65,14 +65,14 @@ export default async function HomePage() {
           offers={offers}
           galleryImages={galleryImages}
           reviews={guestReviews}
-          whatsappNumber={siteSettings.whatsapp}
+          whatsappNumber={sitePengaturan.whatsapp}
         />
 
-        <LocationSection />
+        <LokasiSection />
       </main>
 
       <Footer />
-      <FloatingWhatsApp phoneNumber={siteSettings.whatsapp} />
+      <FloatingWhatsApp phoneNumber={sitePengaturan.whatsapp} />
     </div>
   );
 }

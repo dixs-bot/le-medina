@@ -1,12 +1,12 @@
 import React from 'react';
 import {
   getAdminMetrics,
-  getReservations,
+  getReservasi,
   getAllRoomTypesAdmin,
-  getRooms,
+  getKamar,
   getAllRestaurantMenuAdmin,
   getRestaurantCategories,
-  getSiteSettings,
+  getSitePengaturan,
   getOffers,
 } from '../../lib/data/store';
 import AdminDashboardClient from './AdminDashboardClient';
@@ -21,28 +21,28 @@ export default async function AdminPage() {
     rooms,
     menuItems,
     categories,
-    siteSettings,
+    sitePengaturan,
     offers,
   ] = await Promise.all([
     getAdminMetrics(),
-    getReservations(),
+    getReservasi(),
     getAllRoomTypesAdmin(),
-    getRooms(),
+    getKamar(),
     getAllRestaurantMenuAdmin(),
     getRestaurantCategories(),
-    getSiteSettings(),
+    getSitePengaturan(),
     getOffers(),
   ]);
 
   return (
     <AdminDashboardClient
       initialMetrics={metrics}
-      initialReservations={reservations}
+      initialReservasi={reservations}
       roomTypes={roomTypes}
       rooms={rooms}
       initialMenuItems={menuItems}
       categories={categories}
-      initialSiteSettings={siteSettings}
+      initialSitePengaturan={sitePengaturan}
       offers={offers}
     />
   );
