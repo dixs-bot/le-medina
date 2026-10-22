@@ -35,6 +35,7 @@ import {
   TrendingUp,
   Percent,
   RefreshCw,
+  Loader2,
   Users,
   LogOut,
 } from 'lucide-react';
@@ -95,6 +96,30 @@ export default function AdminDashboardClient({
   // Site settings state
   const [sitePengaturan, setSitePengaturan] = useState<SitePengaturan>(initialSitePengaturan);
   const [settingsSuccess, setPengaturanSuccess] = useState(false);
+
+  // Async data loading, refresh & actionable error states
+  const [isLoadingReservasi, setIsLoadingReservasi] = useState(false);
+  const [reservasiError, setReservasiError] = useState<string | null>(null);
+
+  const fetchLiveReservations = async () => {
+    setIsLoadingReservasi(true);
+    setReservasiError(null);
+    try {
+      const res = await fetch('/api/reservations');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Gagal memuat reservasi langsung dari server.');
+      }
+      const data = await res.json();
+      if (Array.isArray(data.reservations)) {
+        setReservasi(data.reservations);
+      }
+    } catch (err: any) {
+      setReservasiError(err.message || 'Terjadi gangguan jaringan atau otorisasi server.');
+    } finally {
+      setIsLoadingReservasi(false);
+    }
+  };
 
   // Filtered reservations
   const filteredReservasi = reservations.filter((r) => {
@@ -415,7 +440,14 @@ export default function AdminDashboardClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-bordercolor/60">
-                      {reservations.slice(0, 5).map((r) => (
+                      {reservations.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-xs text-mutedgray">
+                            Belum ada aktivitas reservasi terbaru yang tercatat di database.
+                          </td>
+                        </tr>
+                      ) : (
+                        reservations.slice(0, 5).map((r) => (
                         <tr key={r.id} className="hover:bg-ivory-100/60">
                           <td className="py-3 font-mono font-bold text-forest">
                             {r.reservation_code}
@@ -449,7 +481,8 @@ export default function AdminDashboardClient({
                             </span>
                           </td>
                         </tr>
-                      ))}
+                      ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -470,8 +503,17 @@ export default function AdminDashboardClient({
                   </p>
                 </div>
 
-                {/* Filters */}
+                {/* Actions & Filters */}
                 <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={fetchLiveReservations}
+                    disabled={isLoadingReservasi}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded bg-forest-900 text-ivory hover:bg-forest-800 text-xs font-semibold transition-all disabled:opacity-50"
+                    title="Perbarui data reservasi dari database Supabase"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingReservasi ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingReservasi ? 'Memuat...' : 'Segarkan'}</span>
+                  </button>
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
                     <input
@@ -514,7 +556,46 @@ export default function AdminDashboardClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-bordercolor">
-                      {filteredReservasi.map((res) => (
+                      {isLoadingReservasi ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-mutedgray">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Loader2 className="w-6 h-6 animate-spin text-gold" />
+                              <span className="text-xs font-medium">Memuat data reservasi langsung dari database...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : reservasiError ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2 text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-4 max-w-md mx-auto">
+                              <AlertCircle className="w-5 h-5" />
+                              <span className="text-xs font-semibold">{reservasiError}</span>
+                              <button
+                                onClick={fetchLiveReservations}
+                                className="mt-1 px-3 py-1 bg-rose-600 text-white rounded text-[11px] font-bold hover:bg-rose-700 transition-colors"
+                              >
+                                Coba Lagi
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : filteredReservasi.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-12 text-center text-mutedgray">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <CalendarCheck className="w-8 h-8 text-gold/60" />
+                              <span className="text-sm font-semibold text-forest">Belum Ada Data Reservasi</span>
+                              <span className="text-xs max-w-sm">
+                                {resCari || statusFilter !== 'all'
+                                  ? 'Tidak ditemukan reservasi yang sesuai dengan kriteria pencarian atau filter status yang dipilih.'
+                                  : 'Saat ini belum ada pemesanan kamar yang tercatat di sistem database hotel.'}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredReservasi.map((res) => (
                         <tr key={res.id} className="hover:bg-ivory-100/50">
                           <td className="p-4 font-mono font-bold text-forest">
                             {res.reservation_code}
@@ -586,7 +667,8 @@ export default function AdminDashboardClient({
                             </button>
                           </td>
                         </tr>
-                      ))}
+                      ))
+                      )}
                     </tbody>
                   </table>
                 </div>

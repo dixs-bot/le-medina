@@ -187,9 +187,13 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
+    // Validation failures are returned above with explicit 4xx responses.
+    // Failures after attempting the database operation must not be reported as
+    // a client validation error or as a successful reservation.
+    const message = error?.message || 'Terjadi kesalahan saat memproses reservasi Anda.';
     return NextResponse.json(
-      { error: error.message || 'Terjadi kesalahan saat memproses reservasi Anda.' },
-      { status: 400 }
+      { success: false, error: message },
+      { status: 500 }
     );
   }
 }

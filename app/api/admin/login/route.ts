@@ -6,7 +6,7 @@ import { supabase, isSupabaseConfigured } from '../../../../lib/supabaseClient';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, requestedRole } = body;
+    const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'MedinaAdmin2026!';
+    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || '';
+    const allowDevelopmentFallback = process.env.NODE_ENV !== 'production' && process.env.ADMIN_DEV_LOGIN_ENABLED === 'true';
 
     let adminUser: AdminUser | null = null;
 
@@ -29,25 +30,54 @@ export async function POST(request: NextRequest) {
         });
 
         if (!error && data.user) {
-          const { data: roleRecord } = await supabase
+          const { data: roleRecord, error: roleError } = await supabase
             .from('user_roles')
-            .select('role')
-            .eq('user_id', data.user.id)
+            .select('role, profiles!inner(auth_user_id, full_name, email)')
+            .eq('profiles.auth_user_id', data.user.id)
+            .limit(1)
             .maybeSingle();
-
-          adminUser = {
-            id: data.user.id,
-            email: data.user.email || cleanEmail,
-            name: data.user.user_metadata?.full_name || 'Admin Le Médina',
-            role: (roleRecord?.role as Role) || 'reservation_staff',
-          };
+          const validRoles: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+          if (!roleError && roleRecord && validRoles.includes(roleRecord.role as Role)) {
+            const profile = Array.isArray((roleRecord as any).profiles) ? (roleRecord as any).profiles[0] : (roleRecord as any).profiles;
+            adminUser = {
+              id: data.user.id,
+              email: data.user.email || profile?.email || cleanEmail,
+              name: profile?.full_name || data.user.user_metadata?.full_name || 'Admin Le Médina',
+              role: roleRecord.role as Role,
+            };
+          }
         }
       } catch (err) {
-        console.warn('Supabase auth attempt failed, evaluating local credentials fallback', err);
+        console.warn('Supabase authentication attempt failed.');
       }
     }
 
-    // 2. Local fallback credentials check
+    // Local credentials are development-only and must be explicitly enabled.
+    // Never accept a role supplied by the browser.
+    if (!adminUser && allowDevelopmentFallback && defaultPassword) {
+      const validAdminEmails = [
+        'admin@lemedina.id',
+        'superadmin@lemedina.id',
+        'reservasi@lemedina.id',
+        'editor@lemedina.id',
+        'staff@lemedina.id',
+      ];
+      const isEmailAllowed = validAdminEmails.includes(cleanEmail);
+      const isDefaultPassValid = String(password) === defaultPassword;
+      if (isEmailAllowed && isDefaultPassValid) {
+        let role: Role = 'admin';
+        if (cleanEmail.includes('superadmin')) role = 'super_admin';
+        else if (cleanEmail.includes('reservasi') || cleanEmail.includes('staff')) role = 'reservation_staff';
+        else if (cleanEmail.includes('editor')) role = 'content_editor';
+        adminUser = {
+          id: `local-${cleanEmail.replace(/[^a-z0-9]/g, '-')}`,
+          email: cleanEmail,
+          name: cleanEmail.includes('superadmin') ? 'Super Administrator' : 'Administrator Le Médina',
+          role,
+        };
+      }
+    }
+
     if (!adminUser) {
       const validAdminEmails = [
         'admin@lemedina.id',
@@ -108,7 +138,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error: any) {
     return NextResponse.json(
-      { error: 'Gagal memproses autentikasi admin: ' + (error.message || 'Galat internal') },
+      { error: process.env.NODE_ENV === 'production' ? 'Gagal memproses autentikasi admin. Periksa konfigurasi server.' : ('Gagal memproses autentikasi admin: ' + (error.message || 'Galat internal')) },
       { status: 500 }
     );
   }

@@ -11,10 +11,13 @@ export interface AdminUser {
 }
 
 // In production, ADMIN_SECRET_KEY MUST be set in environment variables
-const ADMIN_SECRET =
-  process.env.ADMIN_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  'le-medina-singkawang-hmac-secret-auth-key-2026';
+const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || '';
+
+function assertSessionSecretConfigured(): void {
+  if (process.env.NODE_ENV === 'production' && ADMIN_SECRET.length < 32) {
+    throw new Error('ADMIN_SECRET_KEY harus dikonfigurasi dengan nilai acak minimal 32 karakter.');
+  }
+}
 
 // Role hierarchy & permission matrices
 export const ROLE_HIERARCHY: Record<Role, number> = {
@@ -67,6 +70,8 @@ export function hasPermission(role: Role, permission: string): boolean {
 
 // Cryptographic token signing using HMAC-SHA256
 export function signSessionToken(user: AdminUser, expiresInSeconds = 86400): string {
+  assertSessionSecretConfigured();
+  if (!ADMIN_SECRET) throw new Error('ADMIN_SECRET_KEY belum dikonfigurasi.');
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
   const payload = Buffer.from(
@@ -90,6 +95,7 @@ export function signSessionToken(user: AdminUser, expiresInSeconds = 86400): str
 
 export function verifySessionToken(token: string): AdminUser | null {
   try {
+    if (!ADMIN_SECRET || (process.env.NODE_ENV === 'production' && ADMIN_SECRET.length < 32)) return null;
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
@@ -174,19 +180,22 @@ export async function getAuthenticatedAdmin(
       const { data: { user }, error } = await supabase.auth.getUser(token);
       if (!error && user) {
         // Query user role from public.user_roles joined with profiles
-        const { data: roleData } = await supabase
+        const { data: roleData, error: roleError } = await supabase
           .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
+          .select('role, profiles!inner(auth_user_id, full_name, email)')
+          .eq('profiles.auth_user_id', user.id)
+          .limit(1)
           .maybeSingle();
 
-        const role = (roleData?.role as Role) || 'reservation_staff';
+        const allowedRoles: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+        if (roleError || !roleData || !allowedRoles.includes(roleData.role as Role)) return null;
+        const profile = Array.isArray((roleData as any).profiles) ? (roleData as any).profiles[0] : (roleData as any).profiles;
 
         return {
           id: user.id,
-          email: user.email || '',
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Staff Hotel',
-          role,
+          email: user.email || profile?.email || '',
+          name: profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Staf Hotel',
+          role: roleData.role as Role,
         };
       }
     } catch {

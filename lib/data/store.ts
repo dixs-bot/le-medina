@@ -26,7 +26,7 @@ import {
   initialGaleriImages,
   initialTamuReviews,
 } from './seed';
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { supabase, supabaseAdmin, isSupabaseConfigured, isSupabaseAdminConfigured } from '../supabaseClient';
 
 // Persistent in-memory global state across Route Handlers in serverless/Node process
 interface GlobalState {
@@ -105,51 +105,41 @@ export function getDatesBetween(startDateStr: string, endDateStr: string): strin
 // 1. Site Pengaturan
 export async function getSitePengaturan(): Promise<SitePengaturan> {
   if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && data) {
-        return {
-          name: data.name || store.sitePengaturan.name,
-          tagline: data.tagline || store.sitePengaturan.tagline,
-          stars: data.stars || store.sitePengaturan.stars,
-          address: data.address || store.sitePengaturan.address,
-          phone: data.phone || store.sitePengaturan.phone,
-          whatsapp: data.whatsapp || store.sitePengaturan.whatsapp,
-          email: data.email || store.sitePengaturan.email,
-          check_in_time: data.check_in_time || store.sitePengaturan.check_in_time,
-          check_out_time: data.check_out_time || store.sitePengaturan.check_out_time,
-          currency: data.currency || store.sitePengaturan.currency,
-        };
-      }
-    } catch {
-      // Fallback to store
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('key, value')
+      .eq('key', 'hotel_info')
+      .maybeSingle();
+    if (error) {
+      console.error('Failed to load hotel settings from Supabase:', error.message);
+      throw new Error('Gagal membaca pengaturan hotel dari database.');
     }
+    const value = (data?.value && typeof data.value === 'object' ? data.value : {}) as Partial<SitePengaturan>;
+    if (data) return { ...store.sitePengaturan, ...value };
+    return store.sitePengaturan;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Pengaturan hotel tidak dapat dimuat karena Supabase belum dikonfigurasi.');
   }
   return store.sitePengaturan;
 }
 
 export async function updateSitePengaturan(partial: Partial<SitePengaturan>): Promise<SitePengaturan> {
-  store.sitePengaturan = { ...store.sitePengaturan, ...partial };
-
-  if (isSupabaseConfigured && supabase) {
-    try {
-      await supabase
-        .from('site_settings')
-        .update({
-          ...partial,
-          updated_at: new Date().toISOString(),
-        })
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-    } catch (err) {
-      console.warn('Failed to sync site_settings update to Supabase', err);
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const current = await getSitePengaturan();
+    const next = { ...current, ...partial };
+    const { error } = await supabaseAdmin
+      .from('site_settings')
+      .upsert({ key: 'hotel_info', value: next, description: 'Hotel contact and operational settings', updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) {
+      console.error('Failed to save hotel settings to Supabase:', error.message);
+      throw new Error('Pengaturan hotel gagal disimpan ke database.');
     }
+    store.sitePengaturan = next;
+    return next;
   }
-
+  if (process.env.NODE_ENV === 'production') throw new Error('SUPABASE_SERVICE_ROLE_KEY wajib dikonfigurasi untuk mengubah pengaturan hotel.');
+  store.sitePengaturan = { ...store.sitePengaturan, ...partial };
   return store.sitePengaturan;
 }
 
@@ -195,16 +185,57 @@ export async function getAllRoomTypesAdmin(): Promise<RoomType[]> {
 }
 
 export async function getRoomTypeBySlug(slug: string): Promise<RoomType | null> {
-  const rt = store.roomTypes.find((r) => r.slug === slug);
-  return rt || null;
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('room_types').select('*, room_images(*)').eq('slug', slug).eq('is_active', true).maybeSingle();
+    if (error) throw new Error('Gagal membaca tipe kamar dari database.');
+    if (!data) return null;
+    return { ...data, tagline: data.tagline || '', description: data.description || '', currency: data.currency || 'IDR', amenities: Array.isArray(data.amenities) ? data.amenities : [], images: Array.isArray(data.room_images) ? data.room_images : [] } as RoomType;
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('Supabase belum dikonfigurasi untuk membaca tipe kamar.');
+  return store.roomTypes.find((r) => r.slug === slug) || null;
 }
 
 export async function getRoomTypeById(id: string): Promise<RoomType | null> {
-  const rt = store.roomTypes.find((r) => r.id === id);
-  return rt || null;
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('room_types')
+      .select('*, room_images(*)')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) {
+      console.error('Failed to load room type from Supabase:', error.message);
+      throw new Error('Gagal memeriksa tipe kamar pada database.');
+    }
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      tagline: data.tagline || '',
+      description: data.description || '',
+      base_price_cents: data.base_price_cents,
+      currency: data.currency || 'IDR',
+      max_adults: data.max_adults,
+      max_children: data.max_children,
+      size_sqm: data.size_sqm,
+      bed_type: data.bed_type,
+      view_type: data.view_type,
+      amenities: Array.isArray(data.amenities) ? data.amenities : [],
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      images: Array.isArray(data.room_images) ? data.room_images : [],
+    };
+  }
+  return store.roomTypes.find((r) => r.id === id) || null;
 }
 
 export async function getKamar(): Promise<Room[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('rooms').select('*').order('room_number', { ascending: true });
+    if (error) throw new Error('Gagal membaca inventaris kamar dari database.');
+    return (data || []) as Room[];
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('Supabase belum dikonfigurasi untuk membaca inventaris kamar.');
   return store.rooms;
 }
 
@@ -236,6 +267,20 @@ export async function calculateStayPricing(
     throw new Error(`Tipe kamar dengan ID '${roomTypeId}' tidak ditemukan.`);
   }
 
+  if (isSupabaseConfigured && supabase) {
+    if (promoCode) throw new Error('Kode promo belum terintegrasi dengan mesin harga database. Silakan lanjut tanpa kode promo.');
+    const { data, error } = await supabase.rpc('calculate_stay_rates', { p_room_type_id: roomTypeId, p_check_in: checkIn, p_check_out: checkOut });
+    if (error) {
+      console.error('Failed to calculate stay rates in Supabase:', error.message);
+      throw new Error('Gagal menghitung tarif kamar dari database.');
+    }
+    const rates: NightRateDetail[] = (data || []).map((row: any) => ({ date: row.night_date, priceCents: Number(row.applied_rate_cents), rateName: row.rate_source || 'Tarif database' }));
+    if (!rates.length) throw new Error('Tarif kamar tidak tersedia untuk tanggal yang dipilih.');
+    const totalPriceCents = rates.reduce((sum, item) => sum + item.priceCents, 0);
+    return { nightsCount: rates.length, rates, basePriceCents: roomType.base_price_cents, totalPriceCents, discountCents: 0, currency: roomType.currency || 'IDR' };
+  }
+
+  if (process.env.NODE_ENV === 'production') throw new Error('Supabase belum dikonfigurasi untuk menghitung harga kamar.');
   const nights = getDatesBetween(checkIn, checkOut);
   if (nights.length === 0) {
     throw new Error('Tanggal check-out harus setelah tanggal check-in.');
@@ -313,6 +358,19 @@ export async function checkRoomAvailability(
     return { isTersedia: false, availableKamarCount: 0 };
   }
 
+  if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+    const db = supabaseAdmin || supabase!;
+    const { data, error } = await db.rpc('check_room_type_availability', { p_room_type_id: roomTypeId, p_check_in: checkIn, p_check_out: checkOut });
+    if (error) {
+      console.error('Failed to check room availability in Supabase:', error.message);
+      throw new Error('Gagal memeriksa ketersediaan kamar dari database.');
+    }
+    const available = (data || []) as any[];
+    return { isTersedia: available.length > 0, availableKamarCount: available.length, assignedRoomId: available[0]?.room_id };
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('Supabase belum dikonfigurasi untuk memeriksa ketersediaan kamar.');
+
+  // Development-only in-memory availability.
   // Get physical rooms for this room type
   const physicalKamar = store.rooms.filter(
     (r) => r.room_type_id === roomTypeId && r.status === 'available'
@@ -361,56 +419,107 @@ export interface CreateReservationInput {
 export async function createAtomicReservation(
   input: CreateReservationInput
 ): Promise<Reservation> {
-  return withReservationLock(async () => {
-    const {
+  const {
+    guest_name,
+    guest_email,
+    guest_phone,
+    check_in,
+    check_out,
+    adults,
+    children,
+    room_type_id,
+    special_requests,
+    promo_code,
+  } = input;
+
+  // In configured environments, Supabase is the source of truth. Never return
+  // a successful booking if the database call failed.
+  if (isSupabaseConfigured) {
+    if (promo_code) {
+      throw new Error('Kode promo belum dapat diproses oleh mesin reservasi database. Silakan lanjut tanpa kode promo atau hubungi bagian reservasi.');
+    }
+    const client = supabaseAdmin || supabase;
+    if (!client) throw new Error('Koneksi Supabase belum dikonfigurasi.');
+
+    // The database RPC performs availability locking, pricing, and inserts into
+    // reservations, reservation_items, reservation_nights, and reservation_events
+    // as one PostgreSQL transaction. The current RPC schema does not accept a
+    // promo code, so do not apply a client-only discount.
+    const { data, error } = await client.rpc('create_atomic_reservation', {
+      p_guest_name: guest_name,
+      p_guest_email: guest_email,
+      p_guest_phone: guest_phone,
+      p_check_in: check_in,
+      p_check_out: check_out,
+      p_adults: adults,
+      p_children: children,
+      p_room_type_id: room_type_id,
+      p_special_requests: special_requests || null,
+    });
+
+    if (error) {
+      console.error('Supabase create_atomic_reservation failed:', error.message);
+      throw new Error(
+        error.message?.toLowerCase().includes('no rooms')
+          ? 'Mohon maaf, kamar tidak tersedia pada tanggal yang dipilih.'
+          : 'Pemesanan belum dapat disimpan. Silakan coba kembali atau hubungi bagian reservasi.'
+      );
+    }
+
+    const result = data as Record<string, any> | null;
+    if (!result?.success || !result.reservation_code || !result.reservation_id) {
+      console.error('Supabase reservation RPC returned an unexpected result.');
+      throw new Error('Database tidak mengonfirmasi penyimpanan reservasi. Silakan coba kembali.');
+    }
+
+    const roomType = await getRoomTypeById(room_type_id);
+    if (!roomType) {
+      // The booking is already committed; still return the persisted booking
+      // confirmation rather than falling back to an unrelated seeded room type.
+      console.error('Reservation saved but room type could not be loaded:', room_type_id);
+    }
+
+    const persisted: Reservation = {
+      id: result.reservation_id,
+      reservation_code: result.reservation_code,
       guest_name,
       guest_email,
       guest_phone,
+      special_requests,
       check_in,
       check_out,
       adults,
       children,
-      room_type_id,
-      special_requests,
-      promo_code,
-    } = input;
+      status: result.status || 'pending',
+      total_amount_cents: Number(result.total_amount_cents || 0),
+      currency: result.currency || roomType?.currency || 'IDR',
+      source: 'direct_web',
+      whatsapp_notified: false,
+      created_at: new Date().toISOString(),
+      assigned_room_number: 'Penetapan sesuai sistem reservasi',
+      room_type: roomType || undefined,
+      internal_notes: undefined,
+    };
+    return persisted;
+  }
 
+  // Never fabricate a successful booking in production when Supabase is missing.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Pemesanan online belum aktif: konfigurasi Supabase server belum tersedia.');
+  }
+
+  // Local-only behavior is development-only and must not be deployed as production data.
+  return withReservationLock(async () => {
     const roomType = await getRoomTypeById(room_type_id);
-    if (!roomType) {
-      throw new Error('Tipe kamar yang dipilih tidak ditemukan.');
-    }
+    if (!roomType) throw new Error('Tipe kamar yang dipilih tidak ditemukan.');
 
-    // 1. Verify availability under mutex lock
     const availability = await checkRoomAvailability(room_type_id, check_in, check_out);
     if (!availability.isTersedia) {
-      throw new Error(
-        'Mohon maaf, tidak ada kamar yang tersedia pada kategori ini untuk tanggal yang dipilih. Silakan pilih tanggal lain atau tipe kamar berbeda.'
-      );
+      throw new Error('Mohon maaf, tidak ada kamar yang tersedia pada tanggal yang dipilih.');
     }
 
-    // 2. Find assigned room
-    const physicalKamar = store.rooms.filter(
-      (r) => r.room_type_id === room_type_id && r.status === 'available'
-    );
-    const activeReservasi = store.reservations.filter(
-      (res) => res.status === 'confirmed' || res.status === 'pending' || res.status === 'checked_in'
-    );
-
-    const assignedRoom = physicalKamar.find((physRoom) => {
-      const hasConflict = activeReservasi.some((res) => {
-        if (res.assigned_room_number !== physRoom.room_number) return false;
-        return !(res.check_out <= check_in || res.check_in >= check_out);
-      });
-      return !hasConflict;
-    });
-
-    // 3. Dynamic pricing computation (Server-side calculation)
     const pricing = await calculateStayPricing(room_type_id, check_in, check_out, promo_code);
-
-    // 4. Generate cryptographically secure reservation code: MED-XXXXXXXX (8 hex chars)
-    const secureRandomHex = crypto.randomBytes(4).toString('hex').toUpperCase();
-    const reservation_code = `MED-${secureRandomHex}`;
-
+    const reservation_code = `MED-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     const newReservation: Reservation = {
       id: `res-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
       reservation_code,
@@ -428,40 +537,11 @@ export async function createAtomicReservation(
       source: 'direct_web',
       whatsapp_notified: false,
       created_at: new Date().toISOString(),
-      assigned_room_number: assignedRoom ? assignedRoom.room_number : 'Assigned Upon Check-in',
+      assigned_room_number: 'Assigned Upon Check-in',
       room_type: roomType,
       internal_notes: promo_code ? `Dipesan dengan kode promo: ${promo_code}` : undefined,
     };
-
-    // Prepend atomically to reservations
     store.reservations.unshift(newReservation);
-
-    // Sync to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('reservations').insert({
-          reservation_code: newReservation.reservation_code,
-          guest_name: newReservation.guest_name,
-          guest_email: newReservation.guest_email,
-          guest_phone: newReservation.guest_phone,
-          check_in: newReservation.check_in,
-          check_out: newReservation.check_out,
-          adults: newReservation.adults,
-          children: newReservation.children,
-          status: newReservation.status,
-          total_amount_cents: newReservation.total_amount_cents,
-          currency: newReservation.currency,
-          source: newReservation.source,
-          special_requests: newReservation.special_requests,
-          internal_notes: newReservation.internal_notes,
-          assigned_room_number: newReservation.assigned_room_number,
-          created_at: newReservation.created_at,
-        });
-      } catch (err) {
-        console.warn('Failed to insert reservation into Supabase', err);
-      }
-    }
-
     return newReservation;
   });
 }
@@ -471,27 +551,189 @@ export async function getReservasi(filter?: {
   status?: ReservationStatus;
   search?: string;
 }): Promise<Reservation[]> {
-  let list = [...store.reservations];
+  if (isSupabaseConfigured) {
+    // The custom HMAC admin session is not a Supabase Auth session. Use the
+    // server-only service-role client for this server-side admin data read.
+    if (!isSupabaseAdminConfigured || !supabaseAdmin) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY wajib dikonfigurasi di server untuk membaca reservasi admin.');
+    }
+    const client = supabaseAdmin;
 
-  if (filter?.status) {
-    list = list.filter((r) => r.status === filter.status);
+    const { data, error } = await client
+      .from('reservations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch reservations from Supabase:', error.message);
+      throw new Error('Gagal membaca reservasi dari database. Periksa koneksi dan izin Supabase.');
+    }
+
+    let rows: any[] = data || [];
+    if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      rows = rows.filter((r) =>
+        String(r.reservation_code || '').toLowerCase().includes(q) ||
+        String(r.guest_name || '').toLowerCase().includes(q) ||
+        String(r.guest_email || '').toLowerCase().includes(q)
+      );
+    }
+
+    const reservationIds = rows.map((r) => r.id).filter(Boolean);
+    const { data: items, error: itemsError } = reservationIds.length
+      ? await client.from('reservation_items').select('reservation_id, room_type_id, assigned_room_id').in('reservation_id', reservationIds)
+      : { data: [], error: null };
+
+    if (itemsError) {
+      console.error('Failed to fetch reservation items:', itemsError.message);
+      throw new Error('Reservasi ditemukan, tetapi detail tipe kamar gagal dibaca.');
+    }
+
+    const roomTypeIds = Array.from(new Set((items || []).map((i: any) => i.room_type_id).filter(Boolean)));
+    const roomIds = Array.from(new Set((items || []).map((i: any) => i.assigned_room_id).filter(Boolean)));
+    const [{ data: roomTypes, error: roomTypesError }, { data: rooms, error: roomsError }] = await Promise.all([
+      roomTypeIds.length ? client.from('room_types').select('*').in('id', roomTypeIds) : Promise.resolve({ data: [], error: null } as any),
+      roomIds.length ? client.from('rooms').select('id, room_number').in('id', roomIds) : Promise.resolve({ data: [], error: null } as any),
+    ]);
+    if (roomTypesError || roomsError) {
+      console.error('Failed to fetch reservation related data:', roomTypesError?.message || roomsError?.message);
+      throw new Error('Gagal membaca detail kamar reservasi dari database.');
+    }
+
+    const roomTypeMap = new Map((roomTypes || []).map((rt: any) => [rt.id, rt]));
+    const roomMap = new Map((rooms || []).map((room: any) => [room.id, room]));
+    const itemMap = new Map<string, any>();
+    for (const item of items || []) if (!itemMap.has(item.reservation_id)) itemMap.set(item.reservation_id, item);
+
+    return rows.map((item: any) => {
+      const reservationItem = itemMap.get(item.id);
+      const rawRoomType: any = reservationItem ? roomTypeMap.get(reservationItem.room_type_id) : undefined;
+      const roomType: RoomType | undefined = rawRoomType ? {
+        id: rawRoomType.id,
+        name: rawRoomType.name,
+        slug: rawRoomType.slug,
+        tagline: rawRoomType.tagline || '',
+        description: rawRoomType.description || '',
+        base_price_cents: rawRoomType.base_price_cents,
+        currency: rawRoomType.currency || item.currency || 'IDR',
+        max_adults: rawRoomType.max_adults,
+        max_children: rawRoomType.max_children,
+        size_sqm: rawRoomType.size_sqm,
+        bed_type: rawRoomType.bed_type,
+        view_type: rawRoomType.view_type,
+        amenities: Array.isArray(rawRoomType.amenities) ? rawRoomType.amenities : [],
+        is_active: rawRoomType.is_active,
+        sort_order: rawRoomType.sort_order,
+        images: [],
+      } : undefined;
+      const assignedRoom: any = reservationItem?.assigned_room_id ? roomMap.get(reservationItem.assigned_room_id) : undefined;
+      return {
+        id: item.id,
+        reservation_code: item.reservation_code,
+        guest_name: item.guest_name,
+        guest_email: item.guest_email,
+        guest_phone: item.guest_phone,
+        special_requests: item.special_requests || undefined,
+        check_in: item.check_in,
+        check_out: item.check_out,
+        adults: item.adults,
+        children: item.children,
+        status: item.status,
+        total_amount_cents: item.total_amount_cents,
+        currency: item.currency || 'IDR',
+        source: item.source || 'direct_web',
+        whatsapp_notified: Boolean(item.whatsapp_notified),
+        created_at: item.created_at,
+        assigned_room_number: assignedRoom?.room_number || 'Belum Ditentukan',
+        room_type: roomType,
+        internal_notes: item.internal_notes || undefined,
+      } as Reservation;
+    });
   }
 
+  // Explicit local-only development fallback when Supabase is not configured.
+  let list = [...store.reservations];
+  if (filter?.status) list = list.filter((r) => r.status === filter.status);
   if (filter?.search) {
     const q = filter.search.toLowerCase();
-    list = list.filter(
-      (r) =>
-        r.reservation_code.toLowerCase().includes(q) ||
-        r.guest_name.toLowerCase().includes(q) ||
-        r.guest_email.toLowerCase().includes(q)
-    );
+    list = list.filter((r) => r.reservation_code.toLowerCase().includes(q) || r.guest_name.toLowerCase().includes(q) || r.guest_email.toLowerCase().includes(q));
   }
-
   return list;
 }
 
 export async function getReservationByCode(code: string): Promise<Reservation | null> {
   const cleanCode = code.trim().toUpperCase();
+
+  const client = supabaseAdmin || supabase;
+  if (isSupabaseConfigured && client) {
+    try {
+      // First attempt safe RPC get_guest_reservation_by_code
+      const { data: rpcData, error: rpcError } = await client.rpc('get_guest_reservation_by_code', {
+        p_code: cleanCode,
+      });
+
+      if (!rpcError && rpcData) {
+        const roomTypes = await getRoomTypes();
+        const matchedRoomType = roomTypes.find((rt) => rt.name === rpcData.room_type_name) || roomTypes[0];
+        return {
+          id: rpcData.id || `res-supa-${cleanCode}`,
+          reservation_code: rpcData.reservation_code,
+          guest_name: rpcData.guest_name,
+          guest_email: rpcData.guest_email || '',
+          guest_phone: rpcData.guest_phone || '',
+          check_in: rpcData.check_in,
+          check_out: rpcData.check_out,
+          adults: rpcData.adults,
+          children: rpcData.children,
+          status: rpcData.status,
+          total_amount_cents: rpcData.total_amount_cents,
+          currency: rpcData.currency || 'IDR',
+          source: 'direct_web',
+          whatsapp_notified: false,
+          created_at: rpcData.created_at || new Date().toISOString(),
+          assigned_room_number: rpcData.assigned_room_number || 'Belum Ditetapkan',
+          room_type: matchedRoomType,
+        };
+      }
+
+      // If RPC not found or returned null, try direct select if admin client available
+      const { data, error } = await client
+        .from('reservations')
+        .select('*')
+        .eq('reservation_code', cleanCode)
+        .maybeSingle();
+
+      if (!error && data) {
+        const roomTypes = await getRoomTypes();
+        const matchedRoomType = roomTypes.find((rt) => rt.id === data.room_type_id) || roomTypes[0];
+        return {
+          id: data.id,
+          reservation_code: data.reservation_code,
+          guest_name: data.guest_name,
+          guest_email: data.guest_email,
+          guest_phone: data.guest_phone,
+          special_requests: data.special_requests || undefined,
+          check_in: data.check_in,
+          check_out: data.check_out,
+          adults: data.adults,
+          children: data.children,
+          status: data.status,
+          total_amount_cents: data.total_amount_cents,
+          currency: data.currency || 'IDR',
+          source: data.source || 'direct_web',
+          whatsapp_notified: Boolean(data.whatsapp_notified),
+          created_at: data.created_at,
+          assigned_room_number: data.assigned_room_number || 'Belum Ditetapkan',
+          room_type: matchedRoomType,
+          internal_notes: data.internal_notes || undefined,
+        };
+      }
+    } catch (err) {
+      console.warn('Failed to fetch reservation by code from Supabase, using local fallback:', err);
+    }
+  }
+
   const res = store.reservations.find(
     (r) => r.reservation_code.toUpperCase() === cleanCode
   );
@@ -516,9 +758,10 @@ export async function updateReservationStatus(
 
   const updatedRecord = store.reservations[index];
 
-  if (isSupabaseConfigured && supabase) {
+  const client = supabaseAdmin || supabase;
+  if (isSupabaseConfigured && client) {
     try {
-      await supabase
+      await client
         .from('reservations')
         .update({
           status,
@@ -586,23 +829,27 @@ export interface AdminMetrics {
 }
 
 export async function getAdminMetrics(): Promise<AdminMetrics> {
-  const totalReservasi = store.reservations.length;
-  const pendingReservasi = store.reservations.filter((r) => r.status === 'pending').length;
-  const confirmedReservasi = store.reservations.filter(
+  const reservationsList = await getReservasi();
+  const roomsList = await getKamar();
+  const offersList = await getOffers();
+
+  const totalReservasi = reservationsList.length;
+  const pendingReservasi = reservationsList.filter((r) => r.status === 'pending').length;
+  const confirmedReservasi = reservationsList.filter(
     (r) => r.status === 'confirmed' || r.status === 'checked_in'
   ).length;
 
-  const totalRevenueCents = store.reservations
+  const totalRevenueCents = reservationsList
     .filter((r) => r.status !== 'cancelled')
     .reduce((sum, r) => sum + r.total_amount_cents, 0);
 
-  const totalKamarInventory = store.rooms.length;
-  const occupiedCount = store.reservations.filter((r) => r.status === 'checked_in' || r.status === 'confirmed').length;
+  const totalKamarInventory = roomsList.length;
+  const occupiedCount = reservationsList.filter((r) => r.status === 'checked_in' || r.status === 'confirmed').length;
   const occupancyRatePercentage = totalKamarInventory > 0
     ? Math.min(100, Math.round((occupiedCount / totalKamarInventory) * 100))
     : 78;
 
-  const activeOffersCount = store.offers.filter((o) => o.is_active).length;
+  const activeOffersCount = offersList.filter((o) => o.is_active).length;
 
   return {
     totalReservasi,
