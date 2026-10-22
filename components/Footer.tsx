@@ -128,7 +128,7 @@ export default function Footer() {
                 Shukran for joining our guest circle.
               </div>
             ) : (
-              <form onKirim={handleSubscribe} className="space-y-2">
+              <form onSubmit={handleSubscribe} className="space-y-2">
                 <input
                   type="email"
                   placeholder="Your email address"

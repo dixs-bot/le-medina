@@ -218,7 +218,7 @@ export default function KontakBookingSection({
         ) : (
           /* Main 2-Column Booking Engine Form */
           <div className="max-w-5xl mx-auto bg-ivory rounded-2xl shadow-luxury-lg border border-bordercolor overflow-hidden">
-            <form onKirim={handleBookingKirim} className="p-6 sm:p-10">
+            <form onSubmit={handleBookingKirim} className="p-6 sm:p-10">
               {errorMsg && (
                 <div className="mb-6 p-4 rounded-lg bg-red-50 border border-status-error/30 text-status-error text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
