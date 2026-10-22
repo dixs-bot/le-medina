@@ -3,10 +3,34 @@ import { signSessionToken, AdminUser } from '../../../../lib/auth';
 import { Role } from '../../../../lib/types';
 import { supabase, isSupabaseConfigured } from '../../../../lib/supabaseClient';
 
+const VALID_ROLES: Role[] = [
+  'super_admin',
+  'admin',
+  'reservation_staff',
+  'content_editor',
+];
+
+const DEVELOPMENT_ADMIN_EMAILS = [
+  'admin@lemedina.id',
+  'superadmin@lemedina.id',
+  'reservasi@lemedina.id',
+  'editor@lemedina.id',
+  'staff@lemedina.id',
+];
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+
+    const email =
+      typeof body?.email === 'string'
+        ? body.email.trim().toLowerCase()
+        : '';
+
+    const password =
+      typeof body?.password === 'string'
+        ? body.password
+        : '';
 
     if (!email || !password) {
       return NextResponse.json(
@@ -15,116 +39,125 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || '';
-    const allowDevelopmentFallback = process.env.NODE_ENV !== 'production' && process.env.ADMIN_DEV_LOGIN_ENABLED === 'true';
+    const defaultPassword =
+      process.env.ADMIN_DEFAULT_PASSWORD || '';
+
+    const allowDevelopmentFallback =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ADMIN_DEV_LOGIN_ENABLED === 'true';
 
     let adminUser: AdminUser | null = null;
 
-    // 1. If Supabase configured, attempt Supabase Auth
+    // 1. Autentikasi utama melalui Supabase Auth.
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password: String(password),
-        });
+        const { data, error } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
         if (!error && data.user) {
-          const { data: roleRecord, error: roleError } = await supabase
-            .from('user_roles')
-            .select('role, profiles!inner(auth_user_id, full_name, email)')
-            .eq('profiles.auth_user_id', data.user.id)
-            .limit(1)
-            .maybeSingle();
-          const validRoles: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
-          if (!roleError && roleRecord && validRoles.includes(roleRecord.role as Role)) {
-            const profile = Array.isArray((roleRecord as any).profiles) ? (roleRecord as any).profiles[0] : (roleRecord as any).profiles;
+          const { data: roleRecord, error: roleError } =
+            await supabase
+              .from('user_roles')
+              .select(
+                'role, profiles!inner(auth_user_id, full_name, email)'
+              )
+              .eq('profiles.auth_user_id', data.user.id)
+              .limit(1)
+              .maybeSingle();
+
+          if (
+            !roleError &&
+            roleRecord &&
+            VALID_ROLES.includes(roleRecord.role as Role)
+          ) {
+            const profile = Array.isArray(
+              (roleRecord as any).profiles
+            )
+              ? (roleRecord as any).profiles[0]
+              : (roleRecord as any).profiles;
+
             adminUser = {
               id: data.user.id,
-              email: data.user.email || profile?.email || cleanEmail,
-              name: profile?.full_name || data.user.user_metadata?.full_name || 'Admin Le Médina',
+              email:
+                data.user.email ||
+                profile?.email ||
+                email,
+              name:
+                profile?.full_name ||
+                data.user.user_metadata?.full_name ||
+                'Admin Le Médina',
               role: roleRecord.role as Role,
             };
           }
         }
-      } catch (err) {
-        console.warn('Supabase authentication attempt failed.');
+      } catch {
+        // Jangan membocorkan detail autentikasi ke pengunjung.
+        console.warn(
+          'Supabase authentication attempt failed.'
+        );
       }
     }
 
-    // Local credentials are development-only and must be explicitly enabled.
-    // Never accept a role supplied by the browser.
-    if (!adminUser && allowDevelopmentFallback && defaultPassword) {
-      const validAdminEmails = [
-        'admin@lemedina.id',
-        'superadmin@lemedina.id',
-        'reservasi@lemedina.id',
-        'editor@lemedina.id',
-        'staff@lemedina.id',
-      ];
-      const isEmailAllowed = validAdminEmails.includes(cleanEmail);
-      const isDefaultPassValid = String(password) === defaultPassword;
-      if (isEmailAllowed && isDefaultPassValid) {
-        let role: Role = 'admin';
-        if (cleanEmail.includes('superadmin')) role = 'super_admin';
-        else if (cleanEmail.includes('reservasi') || cleanEmail.includes('staff')) role = 'reservation_staff';
-        else if (cleanEmail.includes('editor')) role = 'content_editor';
-        adminUser = {
-          id: `local-${cleanEmail.replace(/[^a-z0-9]/g, '-')}`,
-          email: cleanEmail,
-          name: cleanEmail.includes('superadmin') ? 'Super Administrator' : 'Administrator Le Médina',
-          role,
-        };
+    // 2. Fallback lokal hanya untuk development.
+    // Role ditentukan server berdasarkan email yang diizinkan.
+    // Role dari browser tidak pernah dipercaya.
+    if (
+      !adminUser &&
+      allowDevelopmentFallback &&
+      defaultPassword &&
+      DEVELOPMENT_ADMIN_EMAILS.includes(email) &&
+      password === defaultPassword
+    ) {
+      let role: Role = 'admin';
+
+      if (email === 'superadmin@lemedina.id') {
+        role = 'super_admin';
+      } else if (
+        email === 'reservasi@lemedina.id' ||
+        email === 'staff@lemedina.id'
+      ) {
+        role = 'reservation_staff';
+      } else if (email === 'editor@lemedina.id') {
+        role = 'content_editor';
       }
+
+      adminUser = {
+        id: `local-${email.replace(/[^a-z0-9]/g, '-')}`,
+        email,
+        name:
+          role === 'super_admin'
+            ? 'Super Administrator'
+            : 'Administrator Le Médina',
+        role,
+      };
     }
 
-    if (!adminUser) {
-      const validAdminEmails = [
-        'admin@lemedina.id',
-        'superadmin@lemedina.id',
-        'reservasi@lemedina.id',
-        'editor@lemedina.id',
-        'staff@lemedina.id',
-      ];
-
-      const isDefaultPassValid = password === defaultPassword;
-
-      if ((validAdminEmails.includes(cleanEmail) || cleanEmail.endsWith('@lemedina.id')) && isDefaultPassValid) {
-        let role: Role = 'admin';
-        if (cleanEmail.includes('superadmin')) role = 'super_admin';
-        else if (cleanEmail.includes('reservasi') || cleanEmail.includes('staff')) role = 'reservation_staff';
-        else if (cleanEmail.includes('editor')) role = 'content_editor';
-        else if (requestedRole && ['super_admin', 'admin', 'reservation_staff', 'content_editor'].includes(requestedRole)) {
-          role = requestedRole;
-        }
-
-        adminUser = {
-          id: `local-${cleanEmail.replace(/[^a-z0-9]/g, '-')}`,
-          email: cleanEmail,
-          name: cleanEmail.includes('superadmin') ? 'Super Administrator' : 'Administrator Le Médina',
-          role,
-        };
-      }
-    }
-
+    // 3. Gagal tertutup jika kredensial atau role tidak valid.
+    // Tidak ada fallback kata sandi lokal di production.
     if (!adminUser) {
       return NextResponse.json(
-        { error: 'Email atau kata sandi tidak valid. Akses ditolak.' },
+        {
+          error:
+            'Email atau kata sandi tidak valid. Akses ditolak.',
+        },
         { status: 401 }
       );
     }
 
-    // Sign session token (valid for 24 hours)
+    // 4. Buat sesi admin selama 24 jam.
     const token = signSessionToken(adminUser, 86400);
 
+    // Token disimpan dalam cookie HttpOnly, bukan dikirim
+    // kembali dalam body JSON.
     const response = NextResponse.json({
       success: true,
       message: 'Autentikasi admin berhasil.',
       user: adminUser,
-      token,
     });
 
-    // Set secure HttpOnly cookie
     response.cookies.set({
       name: 'admin_session',
       value: token,
@@ -136,9 +169,19 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error
+        ? error.message
+        : 'Galat internal';
+
     return NextResponse.json(
-      { error: process.env.NODE_ENV === 'production' ? 'Gagal memproses autentikasi admin. Periksa konfigurasi server.' : ('Gagal memproses autentikasi admin: ' + (error.message || 'Galat internal')) },
+      {
+        error:
+          process.env.NODE_ENV === 'production'
+            ? 'Gagal memproses autentikasi admin. Periksa konfigurasi server.'
+            : `Gagal memproses autentikasi admin: ${detail}`,
+      },
       { status: 500 }
     );
   }
