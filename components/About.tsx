@@ -18,7 +18,7 @@ export default function About() {
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-base leading-relaxed">
-            Constructed in the late 19th century as the private residence of an imperial dignitary, Hôtel Le Médina & Resto has been meticulously restored by master Maâlems (Indonesia master artisans) over seven years to revive forgotten architectural treasures.
+            Dibangun dengan memadukan kehangatan budaya dan arsitektur berkelas, Hôtel Le Médina & Resto dirancang secara teliti oleh para pengrajin terampil guna menghadirkan suaka peristirahatan yang memadukan keindahan seni dan kenyamanan modern di Singkawang.
           </p>
         </div>
 
@@ -29,7 +29,7 @@ export default function About() {
             <div className="relative h-[480px] sm:h-[540px] rounded-lg overflow-hidden shadow-luxury-lg border border-bordercolor">
               <img
                 src="https://images.unsplash.com/photo-1539020140153-e479b8c22e70?auto=format&fit=crop&w=1200&q=80"
-                alt="Arched Courtyard of Le Medina"
+                alt="Halaman Beratap Lengkung Hôtel Le Médina"
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-forest-950/70 via-transparent to-transparent" />
@@ -38,7 +38,7 @@ export default function About() {
                   Desain dan Kenyamanan
                 </span>
                 <p className="font-editorial text-xl italic font-normal">
-                  “The soft whisper of fountain water over zellige tiles is the heartbeat of our courtyard.”
+                  “Gemericik air mancur yang menenangkan di pelataran kolam adalah denyut ketenangan di hotel kami.”
                 </p>
               </div>
             </div>
@@ -50,7 +50,7 @@ export default function About() {
                 <span className="text-xs font-semibold uppercase tracking-wider">Detail yang Diperhatikan</span>
               </div>
               <p className="text-xs text-ivory-200 leading-relaxed">
-                Hand-sculpted gypsum plasterwork, Fez zellige geometric mosaics, and cedarwood beams carved with Andalusian verses.
+                Ornamen ukiran bernilai seni tinggi, mosaik geometris yang menawan, serta kayu alami berpadu menciptakan suasana yang elegan dan tenang.
               </p>
             </div>
           </div>
@@ -63,10 +63,10 @@ export default function About() {
               </div>
               <div>
                 <h3 className="font-editorial text-xl font-bold text-forest mb-2">
-                  Historic Medina Heart
+                  Lokasi Bernuansa Bersejarah
                 </h3>
                 <p className="text-sm text-charcoal/80 leading-relaxed">
-                  Nestled in the prestigious Derb Sidi Bouloukate district, our secluded riad provides immediate pedestrian access to the vibrant souks and historic Bahia Palace while guaranteeing absolute acoustic peace.
+                  Terletak di kawasan yang nyaman dan tenang di Singkawang, hotel kami menawarkan akses mudah ke berbagai destinasi budaya sekaligus menjamin ketenangan privasi istirahat Anda.
                 </p>
               </div>
             </div>
@@ -77,10 +77,10 @@ export default function About() {
               </div>
               <div>
                 <h3 className="font-editorial text-xl font-bold text-forest mb-2">
-                  Bespoke Indonesia Hospitality
+                  Keramahan Pelayanan Personal
                 </h3>
                 <p className="text-sm text-charcoal/80 leading-relaxed">
-                  With only four exclusive suites and rooms, our dedicated majordomo team tailors every detail of your stay—from private starlit courtyard dinners to luggage escorts and curated artisan visits.
+                  Dengan jumlah kamar dan suite yang eksklusif, staf kami siap memberikan perhatian penuh untuk setiap kebutuhan Anda—mulai dari sambutan hangat, layanan antar barang, hingga rekomendasi wisata lokal.
                 </p>
               </div>
             </div>
@@ -91,10 +91,10 @@ export default function About() {
               </div>
               <div>
                 <h3 className="font-editorial text-xl font-bold text-forest mb-2">
-                  A Sensory Retreat
+                  Ketenangan Jiwa & Raga
                 </h3>
                 <p className="text-sm text-charcoal/80 leading-relaxed">
-                  Inhale the sweet fragrance of bitter orange blossoms, listen to traditional oud melodies at dusk, and unwind in our heated emerald basin pool beneath ancient date palms.
+                  Hirup kesegaran udara taman yang asri, nikmati alunan musik yang menyejukkan hati di kala senja, dan bersantailah di area kolam renang bernuansa alami.
                 </p>
               </div>
             </div>

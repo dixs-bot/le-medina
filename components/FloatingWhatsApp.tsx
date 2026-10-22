@@ -16,24 +16,24 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
 
   const presets = [
     {
-      label: 'Suite Availability Inquiry',
+      label: 'Informasi Ketersediaan Kamar',
       icon: <BedDouble className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I would like to check availability for a suite at Hôtel Le Médina.',
+      text: 'Halo! Saya ingin menanyakan ketersediaan kamar di Hôtel Le Médina Singkawang.',
     },
     {
-      label: 'Dinner Table Reservation',
+      label: 'Reservasi Meja Restoran',
       icon: <Utensils className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I would like to reserve a dinner table at Restoran Le Medina.',
+      text: 'Halo! Saya ingin melakukan reservasi meja di Restoran Le Medina.',
     },
     {
-      label: 'Airport VIP Transfer',
+      label: 'Layanan Transportasi & Antar-Jemput',
       icon: <Car className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I need assistance arranging an airport chauffeur pickup di Singkawang.',
+      text: 'Halo! Saya memerlukan bantuan penjemputan dan transportasi ke hotel di Singkawang.',
     },
     {
-      label: 'Fasilitas Appointment',
+      label: 'Informasi Fasilitas & Spa',
       icon: <Sparkles className="w-4 h-4 text-emerald-600" />,
-      text: 'Salam! I would like to schedule a private hammam and massage session.',
+      text: 'Halo! Saya ingin menanyakan layanan fasilitas relaksasi dan spa di hotel.',
     },
   ];
 
@@ -66,7 +66,7 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
             <button
               onClick={() => setIsOpen(false)}
               className="text-ivory-300 hover:text-ivory p-1"
-              aria-label="Close WhatsApp card"
+              aria-label="Tutup jendela WhatsApp"
             >
               <X className="w-5 h-5" />
             </button>
@@ -93,7 +93,7 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
           <div className="p-3 bg-ivory border-t border-bordercolor flex items-center gap-2">
             <input
               type="text"
-              placeholder="Or type custom inquiry..."
+              placeholder="Ketik pesan Anda di sini..."
               value={customMsg}
               onChange={(e) => setCustomMsg(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && customMsg.trim() && handleSend(customMsg)}
@@ -103,7 +103,7 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
               onClick={() => customMsg.trim() && handleSend(customMsg)}
               disabled={!customMsg.trim()}
               className="p-2 rounded bg-status-success text-white hover:bg-emerald-700 disabled:opacity-40 transition-colors"
-              aria-label="Send WhatsApp"
+              aria-label="Kirim WhatsApp"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -115,11 +115,11 @@ export default function FloatingWhatsApp({ phoneNumber }: FloatingWhatsAppProps)
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative flex items-center gap-2.5 bg-status-success hover:bg-emerald-600 text-white px-4 py-3.5 rounded-full shadow-2xl hover:shadow-emerald-900/40 transition-all transform hover:scale-105"
-        aria-label="Kontak Concierge on WhatsApp"
+        aria-label="Hubungi Staf via WhatsApp"
       >
         <MessageSquare className="w-5 h-5 fill-white text-white" />
         <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">
-          {isOpen ? 'Close Concierge' : 'WhatsApp Concierge'}
+          {isOpen ? 'Tutup Chat' : 'Layanan WhatsApp'}
         </span>
         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gold rounded-full border-2 border-white animate-pulse" />
       </button>

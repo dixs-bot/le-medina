@@ -33,7 +33,7 @@ export default function Footer() {
               & Resto • Singkawang
             </span>
             <p className="text-xs text-ivory-300 leading-relaxed max-w-sm mb-6">
-              An intimate sanctuary of Indonesia zellige tilework, Andalusian courtyards, Michelin-inspired gastronomy, and restorative hammam baths in the historic Medina of Singkawang.
+              Suaka peristirahatan eksklusif yang memadukan keindahan arsitektur berkelas, suasana asri dan damai, hidangan lezat berkualitas, serta layanan ramah di Singkawang, Kalimantan Barat.
             </p>
 
             <div className="flex items-center gap-2 text-xs text-gold-300">
@@ -50,7 +50,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-xs text-ivory-300">
               <li>
                 <a href="#suites" className="hover:text-gold transition-colors">
-                  Kamar & Residences
+                  Kamar & Suite Pilihan
                 </a>
               </li>
               <li>
@@ -65,12 +65,12 @@ export default function Footer() {
               </li>
               <li>
                 <a href="#facilities" className="hover:text-gold transition-colors">
-                  Les Bains Fasilitas
+                  Fasilitas & Layanan
                 </a>
               </li>
               <li>
                 <a href="#offers" className="hover:text-gold transition-colors">
-                  Penawaran Spesial & Offers
+                  Penawaran & Promo Spesial
                 </a>
               </li>
               <li>
@@ -120,18 +120,18 @@ export default function Footer() {
               Info Hotel
             </h4>
             <p className="text-xs text-ivory-300 leading-relaxed mb-4">
-              Receive private invitations to seasonal culinary festivals, new suite unveilings, and cultural salon gatherings.
+              Dapatkan informasi terkini mengenai penawaran eksklusif, promo musiman, dan kegiatan spesial di Hôtel Le Médina & Resto.
             </p>
 
             {subscribed ? (
               <div className="p-3 bg-forest-900 border border-gold/40 rounded text-xs text-gold-300 text-center font-medium">
-                Shukran for joining our guest circle.
+                Terima kasih telah berlangganan informasi dari kami.
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-2">
                 <input
                   type="email"
-                  placeholder="Your email address"
+                  placeholder="Masukkan alamat email Anda"
                   value={emailSub}
                   onChange={(e) => setEmailSub(e.target.value)}
                   className="w-full px-3 py-2 rounded bg-forest-900 border border-forest-800 text-xs text-ivory focus:outline-none focus:ring-1 focus:ring-gold"
@@ -156,7 +156,7 @@ export default function Footer() {
             onClick={scrollToTop}
             className="flex items-center gap-1.5 text-gold hover:text-gold-300 uppercase tracking-widest text-[11px] font-semibold transition-colors"
           >
-            <span>Back to top</span>
+            <span>Kembali ke atas</span>
             <ArrowUp className="w-3.5 h-3.5" />
           </button>
         </div>

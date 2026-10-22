@@ -32,7 +32,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
   const cleanWhatsAppNumber = sitePengaturan.whatsapp.replace(/[^0-9]/g, '');
   const whatsAppText = encodeURIComponent(
-    `Salam! I am confirming reservation ${reservation.reservation_code} for ${reservation.guest_name} from ${reservation.check_in} to ${reservation.check_out}. Please assist with my arrival details.`
+    `Halo! Saya ingin mengonfirmasi kedatangan untuk kode reservasi ${reservation.reservation_code} atas nama ${reservation.guest_name} (Check-in: ${reservation.check_in}, Check-out: ${reservation.check_out}). Mohon bantuan informasi kedatangannya. Terima kasih!`
   );
   const whatsappUrl = `https://wa.me/${cleanWhatsAppNumber}?text=${whatsAppText}`;
 
@@ -65,7 +65,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               Halo, {reservation.guest_name}
             </h1>
             <p className="text-xs sm:text-sm text-ivory-200/90 font-light max-w-md mx-auto">
-              We look forward to welcoming you to our serene Andalusian sanctuary in the heart of Singkawang.
+              Kami menantikan kedatangan Anda dan siap memberikan pelayanan terbaik di Hôtel Le Médina & Resto Singkawang.
             </p>
 
             {/* Code Badge */}
@@ -83,26 +83,30 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-ivory p-4 rounded-xl border border-bordercolor text-xs">
               <div>
                 <span className="text-mutedgray block">Status</span>
-                <span className="capitalize font-bold text-status-success bg-status-success/10 px-2 py-0.5 rounded inline-block mt-0.5">
-                  {reservation.status}
+                <span className="font-bold text-status-success bg-status-success/10 px-2 py-0.5 rounded inline-block mt-0.5">
+                  {reservation.status === "confirmed" ? "Dikonfirmasi" :
+                   reservation.status === "pending" ? "Menunggu Konfirmasi" :
+                   reservation.status === "checked_in" ? "Sudah Check-In" :
+                   reservation.status === "checked_out" ? "Sudah Check-Out" :
+                   reservation.status === "cancelled" ? "Dibatalkan" : reservation.status}
                 </span>
               </div>
               <div>
                 <span className="text-mutedgray block">Check-in</span>
                 <strong className="text-forest block mt-0.5">{reservation.check_in}</strong>
-                <span className="text-[10px] text-mutedgray">Mulai dari 15:00</span>
+                <span className="text-[10px] text-mutedgray">Mulai 15:00 WIB</span>
               </div>
               <div>
                 <span className="text-mutedgray block">Check-out</span>
                 <strong className="text-forest block mt-0.5">{reservation.check_out}</strong>
-                <span className="text-[10px] text-mutedgray">Until 12:00</span>
+                <span className="text-[10px] text-mutedgray">Hingga 12:00 WIB</span>
               </div>
               <div>
                 <span className="text-mutedgray block">Total Biaya</span>
                 <strong className="text-forest text-sm font-editorial font-bold block mt-0.5">
                   {formatPrice(reservation.total_amount_cents / 100, reservation.currency)}
                 </strong>
-                <span className="text-[10px] text-mutedgray">Taxes & breakfast incl.</span>
+                <span className="text-[10px] text-mutedgray">Termasuk pajak & sarapan</span>
               </div>
             </div>
 
@@ -110,20 +114,20 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             <div className="border border-bordercolor rounded-xl p-6 bg-ivory flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs uppercase tracking-wider text-gold-600 font-semibold block mb-1">
-                  Assigned Quarters
+                  Rincian Kamar Pesanan
                 </span>
                 <h3 className="font-editorial text-xl font-bold text-forest">
-                  {reservation.room_type?.name || 'Selected Indonesia Suite'}
+                  {reservation.room_type?.name || 'Kamar Pilihan'}
                 </h3>
                 <p className="text-xs text-mutedgray mt-1">
-                  Assigned Chamber: <strong>{reservation.assigned_room_number || 'Suite 101'}</strong> • {reservation.adults} Dewasa
+                  Nomor Kamar: <strong>{reservation.assigned_room_number || 'Suite 101'}</strong> • {reservation.adults} Dewasa
                   {reservation.children > 0 ? `, ${reservation.children} Anak-anak` : ''}
                 </p>
               </div>
 
               <div className="text-right sm:text-right">
                 <span className="text-xs text-status-success font-medium bg-forest-50 px-2.5 py-1 rounded border border-forest-100 inline-flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Best Rate Guaranteed
+                  <ShieldCheck className="w-3.5 h-3.5" /> Jaminan Tarif Terbaik
                 </span>
               </div>
             </div>
@@ -132,13 +136,13 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             <div className="bg-ivory rounded-xl p-6 border border-bordercolor space-y-3 text-xs text-charcoal/80">
               <h4 className="font-editorial text-base font-bold text-forest flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-gold" />
-                <span>Kedatangan & Concierge Luggage Escort</span>
+                <span>Petunjuk Kedatangan & Bantuan Barang</span>
               </h4>
               <p className="leading-relaxed">
-                Hôtel Le Médina is located in a quiet pedestrian alley in the Medina: <strong>{sitePengaturan.address}</strong>. Cars cannot enter the alleyway directly.
+                Hôtel Le Médina beralamat di: <strong>{sitePengaturan.address}</strong>. Akses menuju hotel sangat mudah dijangkau dari berbagai penjuru kota Singkawang.
               </p>
               <p className="leading-relaxed">
-                If arriving by taxi, request drop-off at <strong>Bab Agnaou</strong> or <strong>Place des Ferblantiers</strong>. If you require our private chauffeur or a riad luggage porter, please message us on WhatsApp with your arrival time.
+                Bagi tamu yang memerlukan panduan rute, layanan penjemputan, atau bantuan bagasi saat tiba di hotel, silakan hubungi staf kami melalui WhatsApp dengan menyertakan perkiraan jam kedatangan Anda.
               </p>
             </div>
 
@@ -151,10 +155,10 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                 className="inline-flex items-center justify-center gap-2.5 bg-status-success hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-widest px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all w-full sm:w-auto"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Message Concierge on WhatsApp</span>
+                <span>Hubungi Staf via WhatsApp</span>
               </a>
               <p className="text-[11px] text-mutedgray mt-2">
-                Need urgent assistance? Call us directly at{' '}
+                Butuh bantuan mendesak? Hubungi kami langsung di{' '}
                 <a href={`tel:${sitePengaturan.phone}`} className="text-forest font-semibold underline">
                   {sitePengaturan.phone}
                 </a>

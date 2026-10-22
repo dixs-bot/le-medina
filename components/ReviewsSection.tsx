@@ -28,11 +28,11 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
               ))}
             </div>
             <span className="text-xs uppercase tracking-wider font-semibold text-forest">
-              5.0 / 5.0 Exceptional Rating
+              Nilai Sempurna 5.0 / 5.0
             </span>
           </div>
           <p className="text-mutedgray text-xs sm:text-sm">
-            Verified traveler impressions from direct bookings, Condé Nast Traveler, and Relais & Châteaux guests.
+            Kesan dan ulasan tulus dari para tamu yang telah menikmati kenyamanan menginap dan pelayanan kami.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function ReviewsSection({ reviews }: ReviewsSectionProps) {
 
                 {rev.is_verified && (
                   <span className="flex items-center gap-1 text-[11px] text-status-success font-medium bg-forest-50 px-2 py-0.5 rounded border border-forest-100">
-                    <ShieldCheck className="w-3 h-3" /> Verified Tamu
+                    <ShieldCheck className="w-3 h-3" /> Tamu Terverifikasi
                   </span>
                 )}
               </div>

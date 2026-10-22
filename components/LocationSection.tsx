@@ -66,10 +66,10 @@ export default function LokasiSection() {
             {/* Airport Transfer Note */}
             <div className="pt-4 border-t border-forest-800 text-xs text-ivory-300">
               <div className="flex items-center gap-2 text-gold font-semibold mb-1">
-                <Car className="w-4 h-4" /> Private Chauffeur Greeting
+                <Car className="w-4 h-4" /> Layanan Penjemputan Tamu
               </div>
               <p className="text-[11px] leading-relaxed">
-                We provide Mercedes chauffeur airport pickups with a dedicated riad porter greeting you at the nearest gate to escort your luggage seamlessly.
+                Tersedia fasilitas layanan antar-jemput dan bantuan penanganan bagasi oleh staf hotel kami untuk memastikan perjalanan kedatangan Anda berlangsung lancar dan nyaman.
               </p>
             </div>
           </div>
@@ -91,9 +91,9 @@ export default function LokasiSection() {
                   <MapPin className="w-4 h-4" />
                 </div>
                 <h4 className="font-editorial text-sm font-bold text-forest">Hôtel Le Médina</h4>
-                <p className="text-[11px] text-mutedgray mt-0.5">Derb Sidi Bouloukate, Singkawang</p>
+                <p className="text-[11px] text-mutedgray mt-0.5">Pusat Kota Singkawang, Kalimantan Barat</p>
                 <span className="inline-block mt-2 text-[10px] bg-forest-50 text-status-success font-semibold px-2 py-0.5 rounded border border-forest-100">
-                  Pedestrian Sanctuary
+                  Kawasan Asri & Tenang
                 </span>
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function LokasiSection() {
             {/* Bottom Actions Bar */}
             <div className="p-4 sm:p-5 bg-ivory flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-bordercolor">
               <span className="text-xs text-mutedgray">
-                Need directions on arrival? Our concierge is available 24/7 on WhatsApp.
+                Butuh bantuan petunjuk arah kedatangan? Staf kami siap membantu Anda 24/7 melalui WhatsApp.
               </span>
               <a
                 href="https://maps.google.com/?q=Singkawang+Medina"
@@ -109,7 +109,7 @@ export default function LokasiSection() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest px-4 py-2.5 rounded font-medium transition-all shadow-sm"
               >
-                <span>Open in Google Maps</span>
+                <span>Buka di Google Maps</span>
                 <ExternalLink className="w-3.5 h-3.5 text-gold" />
               </a>
             </div>

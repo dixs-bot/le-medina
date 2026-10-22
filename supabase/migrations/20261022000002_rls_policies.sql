@@ -25,7 +25,7 @@ BEGIN
       )
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Enable RLS on all 18 tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -96,13 +96,15 @@ CREATE POLICY "Public can view active room rates" ON public.room_rates
 CREATE POLICY "Staff can manage room rates" ON public.room_rates
     FOR ALL USING (public.current_user_has_role('reservation_staff'));
 
--- 8. Reservasi & Items (Public can insert their booking, staff can view and manage)
+-- 8. Reservasi & Items (Public can insert booking; ONLY staff can select/manage all reservations)
 CREATE POLICY "Tamus can create reservations" ON public.reservations
     FOR INSERT WITH CHECK (true);
-CREATE POLICY "Tamus can view own reservation by code" ON public.reservations
-    FOR SELECT USING (true);
+CREATE POLICY "Staff can view reservations" ON public.reservations
+    FOR SELECT USING (public.current_user_has_role('reservation_staff'));
 CREATE POLICY "Staff can update reservations" ON public.reservations
-    FOR ALL USING (public.current_user_has_role('reservation_staff'));
+    FOR UPDATE USING (public.current_user_has_role('reservation_staff'));
+CREATE POLICY "Super admin can delete reservations" ON public.reservations
+    FOR DELETE USING (public.current_user_has_role('super_admin'));
 
 CREATE POLICY "Allow public insert reservation items" ON public.reservation_items
     FOR INSERT WITH CHECK (true);

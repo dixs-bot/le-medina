@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GaleriImage } from '../lib/types';
 import { X, ChevronLeft, ChevronRight, Maximize2, Sparkles } from 'lucide-react';
 
@@ -13,18 +13,32 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
 
   const categories = [
-    { id: 'all', label: 'All Photographs' },
-    { id: 'architecture', label: 'Architecture' },
-    { id: 'suites', label: 'Kamar & Salons' },
-    { id: 'dining', label: 'Fine Dining' },
-    { id: 'wellness', label: 'Hammam & Pool' },
-    { id: 'experiences', label: 'Singkawang Moments' },
+    { id: 'all', label: 'Semua Foto' },
+    { id: 'architecture', label: 'Arsitektur' },
+    { id: 'suites', label: 'Kamar & Ruang Tamu' },
+    { id: 'dining', label: 'Restoran & Kuliner' },
+    { id: 'wellness', label: 'Kolam Renang & Spa' },
+    { id: 'experiences', label: 'Pesona Singkawang' },
   ];
 
   const filteredImages =
     selectedCategory === 'all'
       ? images
       : images.filter((img) => img.category === selectedCategory);
+
+  const handlePrev = useCallback(() => {
+    setActiveLightboxIndex((prev) => {
+      if (prev === null) return null;
+      return prev > 0 ? prev - 1 : filteredImages.length - 1;
+    });
+  }, [filteredImages.length]);
+
+  const handleNext = useCallback(() => {
+    setActiveLightboxIndex((prev) => {
+      if (prev === null) return null;
+      return prev < filteredImages.length - 1 ? prev + 1 : 0;
+    });
+  }, [filteredImages.length]);
 
   // Keyboard navigation for lightbox
   useEffect(() => {
@@ -37,21 +51,7 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeLightboxIndex, filteredImages.length]);
-
-  const handlePrev = () => {
-    if (activeLightboxIndex === null) return;
-    setActiveLightboxIndex(
-      activeLightboxIndex > 0 ? activeLightboxIndex - 1 : filteredImages.length - 1
-    );
-  };
-
-  const handleNext = () => {
-    if (activeLightboxIndex === null) return;
-    setActiveLightboxIndex(
-      activeLightboxIndex < filteredImages.length - 1 ? activeLightboxIndex + 1 : 0
-    );
-  };
+  }, [activeLightboxIndex, handleNext, handlePrev]);
 
   return (
     <section id="gallery" className="py-24 bg-ivory text-charcoal">
@@ -66,7 +66,7 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
-            Glance through sun-drenched arcades, intricate cedar woodwork, flickering lantern evenings, and private courtyard serenity.
+            Jelajahi keindahan sudut-sudut Hôtel Le Médina: arsitektur bernilai seni tinggi, kehangatan cahaya lampion temaram, dan ketenangan suasana istirahat Anda.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
           <button
             onClick={() => setActiveLightboxIndex(null)}
             className="absolute top-6 right-6 z-10 p-2.5 rounded-full bg-forest-900/80 hover:bg-forest text-ivory transition-colors"
-            aria-label="Close Lightbox"
+            aria-label="Tutup Pratinjau Foto"
           >
             <X className="w-6 h-6" />
           </button>
@@ -137,7 +137,7 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
           <button
             onClick={handlePrev}
             className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-forest-900/80 hover:bg-forest text-ivory transition-colors z-10"
-            aria-label="Previous Image"
+            aria-label="Foto Sebelumnya"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -146,7 +146,7 @@ export default function GaleriSection({ images }: GaleriSectionProps) {
           <button
             onClick={handleNext}
             className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-forest-900/80 hover:bg-forest text-ivory transition-colors z-10"
-            aria-label="Next Image"
+            aria-label="Foto Berikutnya"
           >
             <ChevronRight className="w-6 h-6" />
           </button>

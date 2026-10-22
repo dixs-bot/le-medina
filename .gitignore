@@ -1,10 +1,50 @@
-node_modules/
-.next/
-out/
-dist/
-build/
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing & Coverage
+/coverage
+
+# Next.js Build Output
+/.next/
+/out/
+/build
+/dist
+
+# Environment variables & secrets (CRITICAL: never commit secrets)
 .env
-.env.*
+.env*.local
+.env.development
+.env.test
+.env.production
+.env.staging
 !.env.example
+
+# Cryptographic Keys & Certificates
+*.pem
+*.key
+*.cert
+*.crt
+
+# Debug & system logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 *.log
+
+# OS Metadata & IDE files
 .DS_Store
+*.pem
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel & Turbopack
+.vercel
+.turbo

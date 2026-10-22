@@ -37,13 +37,22 @@ export default function Hero() {
 
         {/* Hero Title */}
         <h1 className="font-editorial text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-ivory leading-[1.1] mb-6">
+<<<<<<< HEAD
           Pengalaman Menginap Nyaman di <br />
           <span className="italic font-normal text-gold-300">Singkawang</span>
+=======
+          Pengalaman Menginap Nyaman & Istimewa <br />
+          <span className="italic font-normal text-gold-300">Hôtel Le Médina & Resto</span> Singkawang
+>>>>>>> d80889a (Audit and fix Hotel Le Medina project hardering)
         </h1>
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-base sm:text-lg text-ivory-200/90 font-light leading-relaxed mb-10">
+<<<<<<< HEAD
           Rasakan kenyamanan menginap dalam suasana yang menenangkan, dengan desain berkarakter, sentuhan estetika yang elegan, serta sajian kuliner istimewa yang menghadirkan pengalaman berkesan bagi setiap tamu.
+=======
+          Di balik suasana tenang Singkawang, hadir suaka peristirahatan berarsitektur khas dengan halaman berhias kolam zamrud, salon ukiran kayu mewah, sajian kuliner istimewa, dan ritual relaksasi spa yang menenangkan.
+>>>>>>> d80889a (Audit and fix Hotel Le Medina project hardering)
         </p>
 
         {/* Dual Primary CTAs */}
@@ -68,27 +77,31 @@ export default function Hero() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-forest-700/60 text-left">
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Sparkles className="w-3.5 h-3.5" /> Kamar Only
+              <Sparkles className="w-3.5 h-3.5" /> Kamar Eksklusif
             </div>
+<<<<<<< HEAD
             <p className="text-xs text-ivory-300">4 Nikmati kenyamanan menginap di kamar berdesain elegan dengan detail interior yang menawan</p>
+=======
+            <p className="text-xs text-ivory-300">4 suite & kamar eksklusif dengan sentuhan seni detail dan kenyamanan premium</p>
+>>>>>>> d80889a (Audit and fix Hotel Le Medina project hardering)
           </div>
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
-              <UtensilsCrossed className="w-3.5 h-3.5" /> Michelin Curated
+              <UtensilsCrossed className="w-3.5 h-3.5" /> Kuliner Istimewa
             </div>
-            <p className="text-xs text-ivory-300">Organic rooftop orchards & authentic slow tagine artistry</p>
+            <p className="text-xs text-ivory-300">Bahan segar pilihan dengan seni pengolahan hidangan khas yang otentik</p>
           </div>
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Private Hammam
+              <ShieldCheck className="w-3.5 h-3.5" /> Fasilitas Relaksasi
             </div>
-            <p className="text-xs text-ivory-300">Carved warm marble steam rooms and black soap rituals</p>
+            <p className="text-xs text-ivory-300">Ruang relaksasi marmer hangat, sauna, dan perawatan tubuh yang menyegarkan</p>
           </div>
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Star className="w-3.5 h-3.5 fill-gold text-gold" /> Medina Heart
+              <Star className="w-3.5 h-3.5 fill-gold text-gold" /> Lokasi Strategis
             </div>
-            <p className="text-xs text-ivory-300">5-minute private stroll to Jemaa el-Fnaa & royal palaces</p>
+            <p className="text-xs text-ivory-300">Akses mudah menuju pusat kota Singkawang, destinasi budaya, dan kuliner lokal</p>
           </div>
         </div>
       </div>

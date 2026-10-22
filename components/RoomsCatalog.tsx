@@ -40,7 +40,7 @@ export default function KamarCatalog({
               Pilihan Kamar
             </span>
             <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest">
-              Kamar & Royal Residences
+              Kamar & Suite Istimewa
             </h2>
           </div>
 
@@ -57,7 +57,7 @@ export default function KamarCatalog({
                   : 'bg-ivory text-charcoal border border-bordercolor hover:border-gold'
               }`}
             >
-              All Kamar ({rooms.length})
+              Semua Kamar ({rooms.length})
             </button>
             <button
               onClick={() => setTamuFilter('2')}
@@ -116,7 +116,7 @@ export default function KamarCatalog({
                       <span className="font-editorial text-lg font-bold text-forest">
                         {formatPrice(room.base_price_cents / 100, room.currency)}
                       </span>
-                      <span className="text-[10px] text-mutedgray ml-1">/ night</span>
+                      <span className="text-[10px] text-mutedgray ml-1">/ malam</span>
                     </div>
                   </div>
 
@@ -157,7 +157,7 @@ export default function KamarCatalog({
                       ))}
                       {room.amenities.length > 3 && (
                         <span className="text-[11px] bg-ivory-200/50 text-mutedgray px-2 py-1 rounded-sm">
-                          +{room.amenities.length - 3} more
+                          +{room.amenities.length - 3} lainnya
                         </span>
                       )}
                     </div>
@@ -176,7 +176,7 @@ export default function KamarCatalog({
                     onClick={() => onSelectRoomForBooking(room)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded bg-gold hover:bg-gold-600 text-charcoal font-semibold text-xs uppercase tracking-widest shadow transition-all"
                   >
-                    <span>Reserve</span>
+                    <span>Reservasi</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>

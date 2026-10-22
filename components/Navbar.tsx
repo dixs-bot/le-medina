@@ -51,7 +51,7 @@ export default function Navbar() {
               href="/admin"
               className="hover:text-gold-300 transition-colors flex items-center gap-1 text-gold-400 font-semibold"
             >
-              <Compass className="w-3.5 h-3.5" /> Staff Portal
+              <Compass className="w-3.5 h-3.5" /> Portal Staf
             </Link>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function Navbar() {
               className="inline-flex items-center gap-2 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest px-5 py-2.5 rounded shadow-sm hover:shadow-md transition-all font-medium border border-gold/30 hover:border-gold"
             >
               <Calendar className="w-3.5 h-3.5 text-gold" />
-              <span>Book Stay</span>
+              <span>Pesan Kamar</span>
             </a>
           </div>
 
@@ -111,7 +111,7 @@ export default function Navbar() {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-forest hover:text-gold transition-colors focus:outline-none"
-              aria-label="Toggle Menu"
+              aria-label="Buka Tutup Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -139,7 +139,7 @@ export default function Navbar() {
                   className="flex items-center justify-center gap-2 bg-forest text-ivory text-xs uppercase tracking-widest py-3 rounded font-medium"
                 >
                   <Calendar className="w-4 h-4 text-gold" />
-                  <span>Reserve Suite</span>
+                  <span>Reservasi Suite</span>
                 </a>
                 <Link
                   href="/admin"

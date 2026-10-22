@@ -37,7 +37,7 @@ BEGIN
             AND res.status IN ('pending', 'confirmed', 'checked_in')
       );
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE SET search_path = public, pg_temp;
 
 -- Function 2: Calculate daily rates & total price with dynamic pricing
 CREATE OR REPLACE FUNCTION public.calculate_stay_rates(
@@ -89,7 +89,7 @@ BEGIN
         v_curr_date := v_curr_date + 1;
     END LOOP;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE SET search_path = public, pg_temp;
 
 -- Function 3: Atomic reservation creation with row locking & audit logging
 CREATE OR REPLACE FUNCTION public.create_atomic_reservation(
@@ -175,7 +175,7 @@ BEGIN
         p_children,
         'pending',
         v_total_cents,
-        'EUR'
+        COALESCE((SELECT currency FROM public.room_types WHERE id = p_room_type_id), 'IDR')
     ) RETURNING id INTO v_res_id;
 
     -- 6. Insert Reservation Item
@@ -239,8 +239,61 @@ BEGIN
         'check_out', p_check_out,
         'nights', (p_check_out - p_check_in),
         'total_amount_cents', v_total_cents,
-        'currency', 'EUR',
+        'currency', COALESCE((SELECT currency FROM public.room_types WHERE id = p_room_type_id), 'IDR'),
         'room_id', v_available_room_id
     );
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+-- Function 4: Safe guest reservation lookup by unique reservation code
+-- Strips internal staff notes and sensitive administration metadata
+CREATE OR REPLACE FUNCTION public.get_guest_reservation_by_code(p_code TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    v_clean_code TEXT;
+    v_res RECORD;
+BEGIN
+    v_clean_code := upper(trim(p_code));
+
+    SELECT 
+        r.id,
+        r.reservation_code,
+        r.guest_name,
+        r.check_in,
+        r.check_out,
+        r.adults,
+        r.children,
+        r.status,
+        r.total_amount_cents,
+        r.currency,
+        r.created_at,
+        rt.name AS room_type_name,
+        rt.slug AS room_type_slug,
+        rm.room_number AS assigned_room_number
+    INTO v_res
+    FROM public.reservations r
+    LEFT JOIN public.reservation_items ri ON ri.reservation_id = r.id
+    LEFT JOIN public.room_types rt ON rt.id = ri.room_type_id
+    LEFT JOIN public.rooms rm ON rm.id = ri.assigned_room_id
+    WHERE r.reservation_code = v_clean_code
+    LIMIT 1;
+
+    IF v_res IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'reservation_code', v_res.reservation_code,
+        'guest_name', v_res.guest_name,
+        'check_in', v_res.check_in,
+        'check_out', v_res.check_out,
+        'adults', v_res.adults,
+        'children', v_res.children,
+        'status', v_res.status,
+        'total_amount_cents', v_res.total_amount_cents,
+        'currency', v_res.currency,
+        'room_type_name', v_res.room_type_name,
+        'assigned_room_number', v_res.assigned_room_number
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;

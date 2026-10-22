@@ -26,7 +26,7 @@ export default function RestaurantSection({
 
   const cleanWhatsAppNumber = whatsappNumber.replace(/[^0-9]/g, '');
   const dinnerInquiryText = encodeURIComponent(
-    'Salam! I would like to inquire about reserving a table at Restoran Le Medina for lunch/dinner.'
+    'Halo! Saya ingin menanyakan ketersediaan dan reservasi meja di Restoran Le Medina untuk makan siang/malam.'
   );
   const whatsappUrl = `https://wa.me/${cleanWhatsAppNumber}?text=${dinnerInquiryText}`;
 
@@ -46,7 +46,7 @@ export default function RestaurantSection({
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-ivory-200/80 text-sm sm:text-base leading-relaxed">
-            Revisiting ancient Fassi and Berber culinary heritage with seasonal harvests from our private organic garden in the Ourika Valley. Prepared over slow olive-charcoal embers.
+            Menyajikan perpaduan hidangan istimewa kaya rempah dan bahan-bahan segar berkualitas pilihan, diolah dengan teknik memasak otentik untuk menghadirkan cita rasa yang tak terlupakan di Singkawang.
           </p>
         </div>
 
@@ -121,12 +121,12 @@ export default function RestaurantSection({
                   )}
                   {item.is_gluten_free && (
                     <span className="bg-forest-800 text-gold-300 px-2 py-0.5 rounded border border-gold/30">
-                      Gluten-Free
+                      Bebas Gluten
                     </span>
                   )}
                   {item.is_signature && (
                     <span className="bg-gold/20 text-gold-300 px-2 py-0.5 rounded border border-gold/40 flex items-center gap-1">
-                      <Sparkles className="w-2.5 h-2.5" /> Chef Special
+                      <Sparkles className="w-2.5 h-2.5" /> Spesial Chef
                     </span>
                   )}
                 </div>
@@ -139,13 +139,13 @@ export default function RestaurantSection({
         <div className="bg-gradient-to-r from-forest-900 to-forest-800 rounded-xl p-8 border border-gold/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
           <div>
             <div className="flex items-center gap-2 text-gold-400 text-xs font-semibold uppercase tracking-widest mb-1">
-              <Utensils className="w-4 h-4" /> Non-Residents Welcome
+              <Utensils className="w-4 h-4" /> Terbuka untuk Umum & Tamu Menginap
             </div>
             <h4 className="font-editorial text-2xl font-bold text-ivory mb-2">
-              Courtyard Candlelit Dining & Tea Tastings
+              Santap Malam Romantis & Jamuan Minum Teh
             </h4>
             <p className="text-xs sm:text-sm text-ivory-300 max-w-xl">
-              Limited to 20 covers per evening to preserve intimate acoustics. Reserve directly via WhatsApp for personalized dietary preparations or special anniversaries.
+              Kapasitas meja terbatas demi menjaga kenyamanan dan suasana hangat bersantap. Silakan lakukan reservasi lebih awal melalui WhatsApp untuk perayaan khusus atau permintaan menu khusus.
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export default function RestaurantSection({
             className="flex-shrink-0 inline-flex items-center gap-2.5 bg-status-success hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-widest px-6 py-3.5 rounded shadow-lg hover:shadow-xl transition-all"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>WhatsApp Table Booking</span>
+            <span>Reservasi Meja via WhatsApp</span>
           </a>
         </div>
       </div>

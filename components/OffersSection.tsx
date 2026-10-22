@@ -31,11 +31,11 @@ export default function OffersSection({
             Penawaran Spesial
           </span>
           <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-ivory leading-tight mb-4">
-            Seasonal Packages & Promo Spesial
+            Paket Spesial & Penawaran Menginap
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-ivory-200/80 text-sm sm:text-base leading-relaxed">
-            Reserve directly with our boutique hotel to unlock privileged amenities, private airport limousine transfers, and bespoke wellness treatments.
+            Pesan langsung melalui hotel kami untuk mendapatkan keuntungan eksklusif, harga terbaik, serta penawaran paket istimewa selama menginap di Singkawang.
           </p>
         </div>
 
@@ -47,7 +47,7 @@ export default function OffersSection({
               className="bg-forest-950/90 rounded-xl overflow-hidden border border-gold/30 shadow-2xl flex flex-col justify-between group"
             >
               <div>
-                {/* Offer Banner Photo */}
+                {/* Offer Banner Phohingga */}
                 {offer.image_url && (
                   <div className="relative h-56 w-full overflow-hidden bg-forest-900">
                     <img
@@ -96,11 +96,11 @@ export default function OffersSection({
               {offer.code && (
                 <div className="p-6 sm:p-8 pt-0 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <span className="text-xs uppercase tracking-wider text-ivory-300">Code:</span>
+                    <span className="text-xs uppercase tracking-wider text-ivory-300">Kode:</span>
                     <button
                       onClick={() => handleCopy(offer.code!)}
                       className="flex items-center gap-2 bg-forest-900 hover:bg-forest-800 text-gold px-3 py-1.5 rounded border border-gold/40 text-xs font-mono font-bold tracking-wider transition-all"
-                      title="Click to copy code"
+                      title="Click hingga copy code"
                     >
                       <span>{offer.code}</span>
                       {copiedCode === offer.code ? (
@@ -113,9 +113,9 @@ export default function OffersSection({
 
                   <button
                     onClick={() => onApplyPromoCode(offer.code!)}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gold hover:bg-gold-600 text-charcoal font-semibold text-xs uppercase tracking-widest px-5 py-2.5 rounded shadow transition-all"
+                    className="w-full sm:w-auhingga inline-flex items-center justify-center gap-2 bg-gold hover:bg-gold-600 text-charcoal font-semibold text-xs uppercase tracking-widest px-5 py-2.5 rounded shadow transition-all"
                   >
-                    <span>Apply & Book</span>
+                    <span>Gunakan & Pesan</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

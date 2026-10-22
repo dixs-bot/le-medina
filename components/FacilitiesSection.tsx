@@ -37,7 +37,7 @@ export default function FacilitiesSection({ facilities }: FacilitiesSectionProps
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
-            Every corner of Le Médina has been curated as a sanctuary for the senses, from ancient steam purification to heated plunge pools and panoramic rooftop stargazing.
+            Setiap sudut Hôtel Le Médina dihadirkan sebagai ruang relaksasi yang memanjakan kenyamanan Anda, mulai dari kolam renang yang asri, ruang relaksasi, hingga teras atap dengan pemandangan terbuka.
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export default function FacilitiesSection({ facilities }: FacilitiesSectionProps
 
                 <div className="pt-3 border-t border-bordercolor/60 flex items-center gap-2 text-xs text-forest font-medium">
                   <CheckCircle className="w-3.5 h-3.5 text-status-success" />
-                  <span>Complimentary for Resident Tamus</span>
+                  <span>Fasilitas Gratis untuk Tamu Menginap</span>
                 </div>
               </div>
             </div>

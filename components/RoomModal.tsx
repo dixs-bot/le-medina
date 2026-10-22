@@ -67,7 +67,7 @@ export default function RoomModal({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-forest-900/80 hover:bg-forest text-ivory transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-gold"
-          aria-label="Close suite details"
+          aria-label="Tutup detail kamar"
         >
           <X className="w-5 h-5" />
         </button>
@@ -129,7 +129,7 @@ export default function RoomModal({
             <div>
               {/* Category & Title */}
               <div className="flex items-center gap-2 text-gold-600 text-xs font-semibold uppercase tracking-widest mb-1">
-                <Sparkles className="w-3.5 h-3.5" /> Luxury Indonesia Suite
+                <Sparkles className="w-3.5 h-3.5" /> Suite Eksklusif Le Medina
               </div>
               <h3 id="modal-room-title" className="font-editorial text-2xl sm:text-3xl font-bold text-forest mb-2">
                 {room.name}
@@ -144,7 +144,7 @@ export default function RoomModal({
               {/* Amenities Grid */}
               <div className="mb-6">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-forest mb-3 border-b border-bordercolor pb-1">
-                  Exclusive Suite Amenities
+                  Fasilitas Kamar Eksklusif
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-charcoal/80">
                   {room.amenities.map((amenity, i) => (
@@ -159,16 +159,16 @@ export default function RoomModal({
               {/* Rate Breakdown Box */}
               <div className="bg-ivory-200/60 p-4 rounded-lg border border-bordercolor mb-6">
                 <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-xs text-mutedgray uppercase tracking-wider">Nightly Base Rate</span>
+                  <span className="text-xs text-mutedgray uppercase tracking-wider">Tarif Dasar Per Malam</span>
                   <div className="text-right">
                     <span className="text-2xl font-bold font-editorial text-forest">
                       {formatPrice(room.base_price_cents / 100, room.currency)}
                     </span>
-                    <span className="text-xs text-mutedgray ml-1">/ night</span>
+                    <span className="text-xs text-mutedgray ml-1">/ malam</span>
                   </div>
                 </div>
                 <p className="text-[11px] text-mutedgray">
-                  *Includes complimentary organic Indonesia breakfast, high-speed Wi-Fi & concierge service. Local city tax applies at check-out.
+                  *Sudah termasuk sarapan pagi, akses Wi-Fi berkecepatan tinggi, dan layanan informasi hotel.
                 </p>
               </div>
             </div>
@@ -183,7 +183,7 @@ export default function RoomModal({
                 className="w-full flex items-center justify-center gap-2 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold py-3.5 px-6 rounded shadow-md hover:shadow-lg transition-all"
               >
                 <Calendar className="w-4 h-4 text-gold" />
-                <span>Reserve This Suite</span>
+                <span>Pesan Suite Ini</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>
 
@@ -191,7 +191,7 @@ export default function RoomModal({
                 onClick={onClose}
                 className="w-full text-center text-xs text-mutedgray hover:text-charcoal py-1 transition-colors"
               >
-                Back to all suites
+                Kembali ke daftar kamar
               </button>
             </div>
           </div>

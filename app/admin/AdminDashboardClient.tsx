@@ -36,7 +36,9 @@ import {
   Percent,
   RefreshCw,
   Users,
+  LogOut,
 } from 'lucide-react';
+import { AdminUser } from '../../lib/auth';
 
 interface AdminDashboardClientProps {
   initialMetrics: AdminMetrics;
@@ -47,6 +49,7 @@ interface AdminDashboardClientProps {
   categories: RestaurantCategory[];
   initialSitePengaturan: SitePengaturan;
   offers: Offer[];
+  currentUser?: AdminUser;
 }
 
 export default function AdminDashboardClient({
@@ -58,6 +61,7 @@ export default function AdminDashboardClient({
   categories,
   initialSitePengaturan,
   offers,
+  currentUser,
 }: AdminDashboardClientProps) {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
@@ -65,7 +69,19 @@ export default function AdminDashboardClient({
   >('overview');
 
   // RBAC active role
-  const [currentRole, setCurrentRole] = useState<Role>('super_admin');
+  const [currentRole, setCurrentRole] = useState<Role>(currentUser?.role || 'super_admin');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+      window.location.reload();
+    } catch (err) {
+      console.error('Logout error', err);
+      window.location.reload();
+    }
+  };
 
   // Reservasi state
   const [reservations, setReservasi] = useState<Reservation[]>(initialReservasi);
@@ -154,26 +170,55 @@ export default function AdminDashboardClient({
           </div>
         </div>
 
-        {/* RBAC Role Switcher */}
+        {/* User Info, RBAC & Logout */}
         <div className="flex items-center gap-3">
-          <span className="text-xs text-ivory-300 hidden md:inline">Active RBAC Persona:</span>
-          <div className="flex bg-forest-900 rounded p-1 border border-forest-800 text-xs">
-            {(['super_admin', 'admin', 'reservation_staff', 'content_editor'] as Role[]).map(
-              (role) => (
-                <button
-                  key={role}
-                  onClick={() => setCurrentRole(role)}
-                  className={`px-2.5 py-1 rounded text-[11px] capitalize font-medium transition-all ${
-                    currentRole === role
-                      ? 'bg-gold text-charcoal font-bold shadow-sm'
-                      : 'text-ivory-300 hover:text-white'
-                  }`}
-                >
-                  {role.replace('_', ' ')}
-                </button>
-              )
-            )}
-          </div>
+          {currentUser && (
+            <div className="hidden lg:flex flex-col text-right">
+              <span className="text-xs font-semibold text-ivory leading-tight">{currentUser.name}</span>
+              <span className="text-[10px] text-ivory-300 leading-tight">{currentUser.email}</span>
+            </div>
+          )}
+
+          {/* If super_admin, can switch simulated view; otherwise display fixed role badge */}
+          {currentUser?.role === 'super_admin' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ivory-300 hidden md:inline">Simulasi RBAC:</span>
+              <div className="flex bg-forest-900 rounded p-1 border border-forest-800 text-xs">
+                {(['super_admin', 'admin', 'reservation_staff', 'content_editor'] as Role[]).map(
+                  (role) => (
+                    <button
+                      key={role}
+                      onClick={() => setCurrentRole(role)}
+                      className={`px-2.5 py-1 rounded text-[11px] capitalize font-medium transition-all ${
+                        currentRole === role
+                          ? 'bg-gold text-charcoal font-bold shadow-sm'
+                          : 'text-ivory-300 hover:text-white'
+                      }`}
+                    >
+                      {role.replace('_', ' ')}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-forest-900 border border-forest-800 px-3 py-1.5 rounded-lg text-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-gold-400" />
+              <span className="text-[11px] text-ivory-200 capitalize font-medium">
+                {currentRole.replace('_', ' ')}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-status-error/20 hover:bg-status-error/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all disabled:opacity-50"
+            title="Keluar dari Panel Admin"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Keluar</span>
+          </button>
         </div>
       </header>
 
@@ -183,7 +228,7 @@ export default function AdminDashboardClient({
         <aside className="w-full md:w-64 bg-forest-900 text-ivory p-4 border-r border-forest-800 flex-shrink-0">
           <div className="space-y-1.5 sticky top-20">
             <span className="text-[10px] uppercase tracking-[0.2em] text-gold-400 font-bold px-3 block mb-2">
-              System Modules
+              Menu Navigasi
             </span>
 
             <button
@@ -195,7 +240,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span>KPI Dashboard</span>
+              <span>Ringkasan Dashboard</span>
             </button>
 
             <button
@@ -208,7 +253,7 @@ export default function AdminDashboardClient({
             >
               <div className="flex items-center gap-3">
                 <CalendarCheck className="w-4 h-4" />
-                <span>Bookings</span>
+                <span>Daftar Reservasi</span>
               </div>
               <span className="text-[10px] bg-forest-950 px-2 py-0.5 rounded-full text-gold-300">
                 {reservations.length}
@@ -224,7 +269,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <BedDouble className="w-4 h-4" />
-              <span>Kamar & Inventory</span>
+              <span>Kamar & Inventaris</span>
             </button>
 
             <button
@@ -236,7 +281,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>Tarif & Rules</span>
+              <span>Tarif & Ketentuan</span>
             </button>
 
             <button
@@ -248,7 +293,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <UtensilsCrossed className="w-4 h-4" />
-              <span>Restaurant CMS</span>
+              <span>Menu Restoran</span>
             </button>
 
             <button
@@ -260,7 +305,7 @@ export default function AdminDashboardClient({
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span>Site & Operations</span>
+              <span>Pengaturan Sistem</span>
             </button>
           </div>
         </aside>
@@ -272,10 +317,10 @@ export default function AdminDashboardClient({
             <div className="space-y-8 animate-fadeIn">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Executive Operations Ringkasan
+                  Ringkasan Operasional Eksekutif
                 </h1>
                 <p className="text-xs text-mutedgray">
-                  Real-time occupancy, revenue yield, and direct reservation pipeline.
+                  Pemantauan tingkat okupansi, pendapatan, dan alur reservasi langsung secara real-time.
                 </p>
               </div>
 
@@ -284,7 +329,7 @@ export default function AdminDashboardClient({
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Menunggu konfirmasi Approvals
+                      Menunggu Konfirmasi
                     </span>
                     <Clock className="w-4 h-4 text-status-warning" />
                   </div>
@@ -292,14 +337,14 @@ export default function AdminDashboardClient({
                     {initialMetrics.pendingReservasi}
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
-                    Requires front-desk deposit confirmation
+                    Memerlukan tindak lanjut dan konfirmasi staf
                   </span>
                 </div>
 
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Dikonfirmasi Bookings
+                      Reservasi Dikonfirmasi
                     </span>
                     <CheckCircle className="w-4 h-4 text-status-success" />
                   </div>
@@ -307,14 +352,14 @@ export default function AdminDashboardClient({
                     {initialMetrics.confirmedReservasi}
                   </div>
                   <span className="text-[11px] text-status-success font-medium mt-1 block">
-                    Total: {initialMetrics.totalReservasi} direct guest stays
+                    Total: {initialMetrics.totalReservasi} reservasi langsung
                   </span>
                 </div>
 
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Occupancy Rate
+                      Tingkat Okupansi
                     </span>
                     <Percent className="w-4 h-4 text-gold" />
                   </div>
@@ -322,22 +367,22 @@ export default function AdminDashboardClient({
                     {initialMetrics.occupancyRatePercentage}%
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
-                    Across 7 luxury riad chambers
+                    Dari total 7 unit kamar hotel
                   </span>
                 </div>
 
                 <div className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">
-                      Gross Revenue
+                      Total Pendapatan
                     </span>
                     <TrendingUp className="w-4 h-4 text-status-success" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-forest">
-                    {formatPrice(initialMetrics.totalRevenueCents / 100, 'EUR')}
+                    {formatPrice(initialMetrics.totalRevenueCents / 100, 'IDR')}
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
-                    Direct web booking revenue
+                    Pendapatan dari pemesanan web langsung
                   </span>
                 </div>
               </div>
@@ -346,13 +391,13 @@ export default function AdminDashboardClient({
               <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-editorial text-lg font-bold text-forest">
-                    Latest Inbound Tamu Bookings
+                    Pemesanan Tamu Terbaru
                   </h3>
                   <button
                     onClick={() => setActiveTab('reservations')}
                     className="text-xs text-gold-600 hover:text-gold-700 font-semibold uppercase tracking-wider flex items-center gap-1"
                   >
-                    <span>View All</span>
+                    <span>Lihat Semua</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -361,10 +406,10 @@ export default function AdminDashboardClient({
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
-                        <th className="py-2.5">Code</th>
+                        <th className="py-2.5">Kode</th>
                         <th>Tamu</th>
-                        <th>Dates</th>
-                        <th>Suite</th>
+                        <th>Tanggal</th>
+                        <th>Kamar</th>
                         <th>Total</th>
                         <th>Status</th>
                       </tr>
@@ -396,7 +441,11 @@ export default function AdminDashboardClient({
                                   : 'bg-mutedgray/10 text-mutedgray'
                               }`}
                             >
-                              {r.status}
+                              {r.status === "confirmed" ? "Dikonfirmasi" :
+                                 r.status === "pending" ? "Menunggu Konfirmasi" :
+                                 r.status === "checked_in" ? "Sudah Check-In" :
+                                 r.status === "checked_out" ? "Sudah Check-Out" :
+                                 r.status === "cancelled" ? "Dibatalkan" : r.status}
                             </span>
                           </td>
                         </tr>
@@ -414,10 +463,10 @@ export default function AdminDashboardClient({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                    Reservation Ledger & Room Assignment
+                    Buku Reservasi & Penetapan Kamar
                   </h1>
                   <p className="text-xs text-mutedgray">
-                    Manage guest lifecycle: Menunggu konfirmasi → Dikonfirmasi → Checked In → Checked Out.
+                    Kelola siklus reservasi: Menunggu Konfirmasi → Dikonfirmasi → Check-In → Check-Out.
                   </p>
                 </div>
 
@@ -427,7 +476,7 @@ export default function AdminDashboardClient({
                     <Search className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
                     <input
                       type="text"
-                      placeholder="Cari guest or code..."
+                      placeholder="Cari nama tamu atau kode..."
                       value={resCari}
                       onChange={(e) => setResCari(e.target.value)}
                       className="pl-8 pr-3 py-2 rounded bg-ivory border border-bordercolor text-xs focus:ring-1 focus:ring-gold"
@@ -439,12 +488,12 @@ export default function AdminDashboardClient({
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="px-3 py-2 rounded bg-ivory border border-bordercolor text-xs focus:ring-1 focus:ring-gold"
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="pending">Menunggu konfirmasi</option>
+                    <option value="all">Semua Status</option>
+                    <option value="pending">Menunggu Konfirmasi</option>
                     <option value="confirmed">Dikonfirmasi</option>
-                    <option value="checked_in">Checked In</option>
-                    <option value="checked_out">Checked Out</option>
-                    <option value="cancelled">Batalled</option>
+                    <option value="checked_in">Sudah Check-In</option>
+                    <option value="checked_out">Sudah Check-Out</option>
+                    <option value="cancelled">Dibatalkan</option>
                   </select>
                 </div>
               </div>
@@ -455,13 +504,13 @@ export default function AdminDashboardClient({
                   <table className="w-full text-left text-xs">
                     <thead className="bg-ivory-200/50 border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
                       <tr>
-                        <th className="p-4">Code</th>
-                        <th className="p-4">Tamu Info</th>
-                        <th className="p-4">Stay Dates</th>
-                        <th className="p-4">Room & Chamber</th>
+                        <th className="p-4">Kode</th>
+                        <th className="p-4">Informasi Tamu</th>
+                        <th className="p-4">Periode Inap</th>
+                        <th className="p-4">Tipe & Nomor Kamar</th>
                         <th className="p-4">Total</th>
-                        <th className="p-4">Status Transition</th>
-                        <th className="p-4">Action</th>
+                        <th className="p-4">Ubah Status</th>
+                        <th className="p-4">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-bordercolor">
@@ -477,15 +526,15 @@ export default function AdminDashboardClient({
                           </td>
                           <td className="p-4">
                             <div>
-                              <span>In: <strong>{res.check_in}</strong></span>
+                              <span>Masuk: <strong>{res.check_in}</strong></span>
                               <br />
-                              <span>Out: <strong>{res.check_out}</strong></span>
+                              <span>Keluar: <strong>{res.check_out}</strong></span>
                             </div>
                           </td>
                           <td className="p-4">
                             <strong className="text-forest block">{res.room_type?.name}</strong>
                             <span className="text-[11px] text-gold-700 font-semibold">
-                              Room: {res.assigned_room_number}
+                              Kamar: {res.assigned_room_number}
                             </span>
                           </td>
                           <td className="p-4 font-bold text-gold-700">
@@ -494,7 +543,11 @@ export default function AdminDashboardClient({
                           <td className="p-4">
                             {canManageReservasi ? (
                               <select
-                                value={res.status}
+                                value={res.status === "confirmed" ? "Dikonfirmasi" :
+                                  res.status === "pending" ? "Menunggu Konfirmasi" :
+                                  res.status === "checked_in" ? "Sudah Check-In" :
+                                  res.status === "checked_out" ? "Sudah Check-Out" :
+                                  res.status === "cancelled" ? "Dibatalkan" : res.status}
                                 onChange={(e) =>
                                   handleUpdateStatus(res.id, e.target.value as ReservationStatus)
                                 }
@@ -508,15 +561,19 @@ export default function AdminDashboardClient({
                                     : 'bg-gray-100 text-gray-700 border-gray-300'
                                 }`}
                               >
-                                <option value="pending">Menunggu konfirmasi</option>
+                                <option value="pending">Menunggu Konfirmasi</option>
                                 <option value="confirmed">Dikonfirmasi</option>
-                                <option value="checked_in">Checked In</option>
-                                <option value="checked_out">Checked Out</option>
-                                <option value="cancelled">Batalled</option>
+                                <option value="checked_in">Sudah Check-In</option>
+                                <option value="checked_out">Sudah Check-Out</option>
+                                <option value="cancelled">Dibatalkan</option>
                               </select>
                             ) : (
                               <span className="capitalize font-bold text-mutedgray">
-                                {res.status}
+                                {res.status === "confirmed" ? "Dikonfirmasi" :
+                                  res.status === "pending" ? "Menunggu Konfirmasi" :
+                                  res.status === "checked_in" ? "Sudah Check-In" :
+                                  res.status === "checked_out" ? "Sudah Check-Out" :
+                                  res.status === "cancelled" ? "Dibatalkan" : res.status}
                               </span>
                             )}
                           </td>
@@ -552,13 +609,13 @@ export default function AdminDashboardClient({
                         onClick={() => setSelectedRes(null)}
                         className="text-xs uppercase font-semibold text-mutedgray hover:text-charcoal"
                       >
-                        ✕ Close
+                        ✕ Tutup
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-xs">
                       <div>
-                        <span className="text-mutedgray block">Tamu Name</span>
+                        <span className="text-mutedgray block">Nama Tamu</span>
                         <strong className="text-forest text-sm">{selectedRes.guest_name}</strong>
                       </div>
                       <div>
@@ -581,14 +638,14 @@ export default function AdminDashboardClient({
 
                     {selectedRes.special_requests && (
                       <div className="bg-ivory-100 p-3 rounded text-xs text-charcoal">
-                        <strong className="block text-forest mb-1">Tamu Permintaan Khusus:</strong>
+                        <strong className="block text-forest mb-1">Permintaan Khusus Tamu:</strong>
                         <p>{selectedRes.special_requests}</p>
                       </div>
                     )}
 
                     {selectedRes.internal_notes && (
                       <div className="bg-yellow-50/80 p-3 rounded text-xs text-yellow-900 border border-yellow-200">
-                        <strong className="block mb-1">Internal Concierge Notes:</strong>
+                        <strong className="block mb-1">Catatan Internal Staf:</strong>
                         <p>{selectedRes.internal_notes}</p>
                       </div>
                     )}
@@ -599,7 +656,7 @@ export default function AdminDashboardClient({
                         target="_blank"
                         className="text-xs text-forest hover:text-gold uppercase tracking-wider font-semibold underline"
                       >
-                        Open Public Confirmation Page ↗
+                        Buka Halaman Konfirmasi Publik ↗
                       </Link>
                     </div>
                   </div>
@@ -613,10 +670,10 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Physical Inventory & Chamber Status
+                  Inventaris Fisik & Status Kamar
                 </h1>
                 <p className="text-xs text-mutedgray">
-                  Real-time maintenance and allocation across the Courtyard, Garden, and Rooftop wings.
+                  Pemantauan status pemeliharaan, kesiapan, dan alokasi kamar di seluruh area hotel.
                 </p>
               </div>
 
@@ -631,7 +688,7 @@ export default function AdminDashboardClient({
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-xs font-mono uppercase tracking-wider text-mutedgray block">
-                            Floor {room.floor} • {room.wing}
+                            Lantai {room.floor} • Sayap {room.wing}
                           </span>
                           <h3 className="font-editorial text-xl font-bold text-forest">
                             {room.room_number}
@@ -644,19 +701,21 @@ export default function AdminDashboardClient({
                               : 'bg-status-warning/10 text-status-warning'
                           }`}
                         >
-                          {room.status}
+                          {room.status === "available" ? "Tersedia" :
+                             room.status === "maintenance" ? "Pemeliharaan" :
+                             room.status === "blocked" ? "Ditutup" : room.status}
                         </span>
                       </div>
 
                       <div className="text-xs text-charcoal/80">
-                        <span className="text-mutedgray block">Assigned Type:</span>
+                        <span className="text-mutedgray block">Tipe Kamar:</span>
                         <strong className="text-forest">{roomType?.name}</strong>
                       </div>
 
                       <div className="text-xs text-mutedgray pt-2 border-t border-bordercolor flex justify-between">
-                        <span>Base Rate:</span>
+                        <span>Tarif Dasar:</span>
                         <strong className="text-gold-700">
-                          {roomType ? formatPrice(roomType.base_price_cents / 100, 'EUR') : ''}/nt
+                          {roomType ? formatPrice(roomType.base_price_cents / 100, 'IDR') : ''}/nt
                         </strong>
                       </div>
                     </div>
@@ -671,10 +730,10 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Seasonal Tarif & Length of Stay Rules
+                  Tarif Musiman & Aturan Durasi Menginap
                 </h1>
                 <p className="text-xs text-mutedgray">
-                  Custom seasonal rate windows, high-season holiday multipliers, and minimum stay requirements.
+                  Pengaturan rentang tarif musiman, periode liburan, dan batas minimum durasi inap.
                 </p>
               </div>
 
@@ -682,10 +741,10 @@ export default function AdminDashboardClient({
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-bordercolor pb-3">
                     <h3 className="font-editorial text-lg font-bold text-forest">
-                      Active Dynamic Pricing Rules
+                      Aturan Penetapan Tarif Aktif
                     </h3>
                     <span className="text-xs text-status-success font-semibold">
-                      Automated Interval Calculation Active
+                      Perhitungan Otomatis Aktif
                     </span>
                   </div>
 
@@ -696,15 +755,15 @@ export default function AdminDashboardClient({
                           Winter Holiday Oasis High Season
                         </h4>
                         <span className="bg-gold/20 text-gold-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          €520 / night
+                          Rp 5.200.000 / malam
                         </span>
                       </div>
                       <p className="text-xs text-mutedgray mb-2">
-                        Window: <strong>Dec 20, 2026 – Jan 05, 2027</strong>
+                        Periode: <strong>Dec 20, 2026 – Jan 05, 2027</strong>
                       </p>
                       <div className="text-[11px] text-charcoal/80 space-y-1">
-                        <div>• Applies to: Sultana Royal Courtyard Suite</div>
-                        <div>• Minimum stay constraint: 3 nights</div>
+                        <div>• Berlaku untuk: Sultana Royal Courtyard Suite</div>
+                        <div>• Batas minimum menginap: 3 malam</div>
                       </div>
                     </div>
 
@@ -714,15 +773,15 @@ export default function AdminDashboardClient({
                           Atlas Winter Starlight Season
                         </h4>
                         <span className="bg-gold/20 text-gold-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          €650 / night
+                          Rp 6.500.000 / malam
                         </span>
                       </div>
                       <p className="text-xs text-mutedgray mb-2">
-                        Window: <strong>Nov 01, 2026 – Dec 31, 2026</strong>
+                        Periode: <strong>Nov 01, 2026 – Dec 31, 2026</strong>
                       </p>
                       <div className="text-[11px] text-charcoal/80 space-y-1">
-                        <div>• Applies to: Atlas Panorama Rooftop Suite</div>
-                        <div>• Minimum stay constraint: 2 nights</div>
+                        <div>• Berlaku untuk: Atlas Panorama Rooftop Suite</div>
+                        <div>• Batas minimum menginap: 2 malam</div>
                       </div>
                     </div>
                   </div>
@@ -740,7 +799,7 @@ export default function AdminDashboardClient({
                     Restoran Le Medina CMS
                   </h1>
                   <p className="text-xs text-mutedgray">
-                    Live menu management, availability toggles, and culinary classifications.
+                    Pengelolaan menu hidangan, tombol status ketersediaan, dan kategori sajian restoran.
                   </p>
                 </div>
               </div>
@@ -749,11 +808,11 @@ export default function AdminDashboardClient({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-ivory-200/50 border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
                     <tr>
-                      <th className="p-4">Dish Name</th>
-                      <th className="p-4">Description</th>
-                      <th className="p-4">Price</th>
-                      <th className="p-4">Dietary Attributes</th>
-                      <th className="p-4">Tersedia</th>
+                      <th className="p-4">Nama Menu</th>
+                      <th className="p-4">Deskripsi</th>
+                      <th className="p-4">Harga</th>
+                      <th className="p-4">Kategori Makanan</th>
+                      <th className="p-4">Ketersediaan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-bordercolor">
@@ -765,7 +824,7 @@ export default function AdminDashboardClient({
                           </strong>
                           {item.is_signature && (
                             <span className="text-[10px] text-gold-600 font-bold uppercase">
-                              ★ Chef Andalan
+                              ★ Andalan Chef
                             </span>
                           )}
                         </td>
@@ -794,7 +853,7 @@ export default function AdminDashboardClient({
                                 : 'bg-gray-200 text-gray-600'
                             }`}
                           >
-                            {item.is_available ? 'Tersedia' : 'Sold Out'}
+                            {item.is_available ? 'Tersedia' : 'Habis'}
                           </button>
                         </td>
                       </tr>
@@ -810,17 +869,17 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn max-w-3xl">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Site Operations & Concierge Pengaturan
+                  Operasional & Pengaturan Sistem
                 </h1>
                 <p className="text-xs text-mutedgray">
-                  Configure live WhatsApp concierge numbers, hotel address, and operational check-in hours.
+                  Konfigurasi nomor kontak WhatsApp, alamat hotel, dan jam operasional check-in / check-out.
                 </p>
               </div>
 
               {settingsSuccess && (
                 <div className="p-4 rounded-lg bg-emerald-50 border border-status-success text-status-success text-xs flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  <span>Hotel operational settings updated successfully.</span>
+                  <span>Pengaturan operasional hotel berhasil diperbarui.</span>
                 </div>
               )}
 
@@ -828,7 +887,7 @@ export default function AdminDashboardClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="block text-xs uppercase font-semibold text-charcoal mb-1">
-                      Hotel Name
+                      Nama Hotel
                     </label>
                     <input
                       type="text"
@@ -842,7 +901,7 @@ export default function AdminDashboardClient({
 
                   <div>
                     <label className="block text-xs uppercase font-semibold text-charcoal mb-1">
-                      WhatsApp Concierge Number (E.164 Format)
+                      Nomor WhatsApp Layanan Hotel (Format E.164)
                     </label>
                     <input
                       type="text"
@@ -856,7 +915,7 @@ export default function AdminDashboardClient({
 
                   <div>
                     <label className="block text-xs uppercase font-semibold text-charcoal mb-1">
-                      Telephone
+                      Nomor Telepon
                     </label>
                     <input
                       type="text"
@@ -870,7 +929,7 @@ export default function AdminDashboardClient({
 
                   <div>
                     <label className="block text-xs uppercase font-semibold text-charcoal mb-1">
-                      Concierge Email
+                      Alamat Email Hotel
                     </label>
                     <input
                       type="email"
@@ -884,7 +943,7 @@ export default function AdminDashboardClient({
 
                   <div className="sm:col-span-2">
                     <label className="block text-xs uppercase font-semibold text-charcoal mb-1">
-                      Physical Medina Address
+                      Alamat Lengkap Hotel
                     </label>
                     <input
                       type="text"
@@ -905,7 +964,7 @@ export default function AdminDashboardClient({
                     }}
                     className="px-6 py-2.5 rounded bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold transition-all shadow"
                   >
-                    Hemat Operational Pengaturan
+                    Simpan Pengaturan Operasional
                   </button>
                 </div>
               </div>
