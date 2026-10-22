@@ -10,13 +10,13 @@ import {
   GaleriImage,
   TamuReview,
 } from '../lib/types';
-import KamarCatalog from './KamarCatalog';
+import KamarCatalog from './RoomsCatalog';
 import RestaurantSection from './RestaurantSection';
 import FacilitiesSection from './FacilitiesSection';
 import OffersSection from './OffersSection';
-import GaleriSection from './GaleriSection';
+import GaleriSection from './GallerySection';
 import ReviewsSection from './ReviewsSection';
-import KontakBookingSection from './KontakBookingSection';
+import KontakBookingSection from './ContactBookingSection';
 
 interface PublicInteractiveWrapperProps {
   roomTypes: RoomType[];
@@ -64,7 +64,7 @@ export default function PublicInteractiveWrapper({
 
   return (
     <>
-      <KamarCatalog
+      <RoomsCatalog
         rooms={roomTypes}
         onSelectRoomForBooking={handleSelectRoomForBooking}
       />
@@ -82,11 +82,11 @@ export default function PublicInteractiveWrapper({
         onApplyPromoCode={handleApplyPromoCode}
       />
 
-      <GaleriSection images={galleryImages} />
+      <GallerySection images={galleryImages} />
 
       <ReviewsSection reviews={reviews} />
 
-      <KontakBookingSection
+      <ContactBookingSection
         roomTypes={roomTypes}
         preselectedRoomId={preselectedRoomId}
         appliedPromoCode={appliedPromoCode}

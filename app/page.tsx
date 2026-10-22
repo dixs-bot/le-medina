@@ -2,14 +2,14 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
 import About from '../components/About';
-import KamarCatalog from '../components/KamarCatalog';
+import KamarCatalog from '../components/RoomsCatalog';
 import RestaurantSection from '../components/RestaurantSection';
 import FacilitiesSection from '../components/FacilitiesSection';
 import OffersSection from '../components/OffersSection';
-import GaleriSection from '../components/GaleriSection';
+import GaleriSection from '../components/GallerySection';
 import ReviewsSection from '../components/ReviewsSection';
-import LokasiSection from '../components/LokasiSection';
-import KontakBookingSection from '../components/KontakBookingSection';
+import LokasiSection from '../components/LocationSection';
+import KontakBookingSection from '../components/ContactBookingSection';
 import FloatingWhatsApp from '../components/FloatingWhatsApp';
 import Footer from '../components/Footer';
 
@@ -68,7 +68,7 @@ export default async function HomePage() {
           whatsappNumber={sitePengaturan.whatsapp}
         />
 
-        <LokasiSection />
+        <LocationSection />
       </main>
 
       <Footer />
