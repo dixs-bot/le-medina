@@ -37,7 +37,7 @@ export default function KontakBookingSection({
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
   const [adults, setDewasa] = useState(2);
-  const [children, setAnak-anak] = useState(0);
+  const [children, setChildren] = useState(0);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState(
     preselectedRoomId || roomTypes[0]?.id || ''
   );
@@ -281,7 +281,7 @@ export default function KontakBookingSection({
                     </label>
                     <select
                       value={children}
-                      onChange={(e) => setAnak-anak(Number(e.target.value))}
+                      onChange={(e) => setChildren(Number(e.target.value))}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                     >
                       <option value={0}>0 Anak-anak</option>
