@@ -38,12 +38,12 @@ export default function Hero() {
         {/* Hero Title */}
         <h1 className="font-editorial text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-ivory leading-[1.1] mb-6">
           Pengalaman Menginap Nyaman di <br />
-          <span className="italic font-normal text-gold-300">Singkawang</span> di Singkawang
+          <span className="italic font-normal text-gold-300">Singkawang</span>
         </h1>
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-base sm:text-lg text-ivory-200/90 font-light leading-relaxed mb-10">
-          Behind modest Medina walls lies an authentic palace of tranquil emerald courtyards, hand-carved cedarwood salons, Michelin-inspired Indonesia gastronomy, and ancestral hammam rituals.
+          Rasakan kenyamanan menginap dalam suasana yang menenangkan, dengan desain berkarakter, sentuhan estetika yang elegan, serta sajian kuliner istimewa yang menghadirkan pengalaman berkesan bagi setiap tamu.
         </p>
 
         {/* Dual Primary CTAs */}
@@ -70,7 +70,7 @@ export default function Hero() {
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
               <Sparkles className="w-3.5 h-3.5" /> Kamar Only
             </div>
-            <p className="text-xs text-ivory-300">4 bespoke suites & rooms with zellige tile & cedar details</p>
+            <p className="text-xs text-ivory-300">4 Nikmati kenyamanan menginap di kamar berdesain elegan dengan detail interior yang menawan</p>
           </div>
           <div className="p-3 bg-forest-900/60 rounded border border-forest-800/80 backdrop-blur-sm">
             <div className="text-gold flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1">
