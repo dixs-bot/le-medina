@@ -10,13 +10,13 @@ import {
   GaleriImage,
   TamuReview,
 } from '../lib/types';
-import KamarCatalog from './RoomsCatalog';
+import RoomsCatalog from './RoomsCatalog';
 import RestaurantSection from './RestaurantSection';
 import FacilitiesSection from './FacilitiesSection';
 import OffersSection from './OffersSection';
-import GaleriSection from './GallerySection';
+import GallerySection from './GallerySection';
 import ReviewsSection from './ReviewsSection';
-import KontakBookingSection from './ContactBookingSection';
+import ContactBookingSection from './ContactBookingSection';
 
 interface PublicInteractiveWrapperProps {
   roomTypes: RoomType[];
