@@ -140,7 +140,7 @@ export default function KontakBookingSection({
           </h2>
           <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
           <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
-            Pemesanan melalui website complimentary bespoke Indonesia breakfast, VIP arrival mint tea ceremony, and preferred choice of courtyard or garden-facing chambers.
+            Pesan langsung melalui situs web resmi untuk jaminan harga terbaik, sarapan pagi istimewa, sambutan hangat kedatangan, serta kemudahan memilih tipe kamar favorit Anda.
           </p>
         </div>
 
@@ -166,7 +166,7 @@ export default function KontakBookingSection({
                 {completedBooking.reservation_code}
               </span>
               <span className="text-[11px] text-ivory-300 mt-2 block">
-                A confirmation has been dispatched to {completedBooking.guest_email}
+                Konfirmasi pemesanan telah dikirimkan ke alamat email {completedBooking.guest_email}
               </span>
             </div>
 
@@ -180,13 +180,13 @@ export default function KontakBookingSection({
                 <strong className="text-forest">{completedBooking.check_out}</strong>
               </div>
               <div>
-                <span className="text-mutedgray block">Suite Category</span>
+                <span className="text-mutedgray block">Kategori Kamar</span>
                 <strong className="text-forest truncate block">
-                  {completedBooking.room_type?.name || 'Selected Suite'}
+                  {completedBooking.room_type?.name || 'Kamar Pilihan'}
                 </strong>
               </div>
               <div>
-                <span className="text-mutedgray block">Total Amount</span>
+                <span className="text-mutedgray block">Total Biaya</span>
                 <strong className="text-gold-700 font-bold">
                   {formatPrice(completedBooking.total_amount_cents / 100, completedBooking.currency)}
                 </strong>
@@ -197,21 +197,21 @@ export default function KontakBookingSection({
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href={`https://wa.me/${cleanWhatsAppNumber}?text=${encodeURIComponent(
-                  `Salam! I just confirmed booking ${completedBooking.reservation_code} for ${completedBooking.guest_name} from ${completedBooking.check_in} to ${completedBooking.check_out}. Could you assist with airport transfer details?`
+                  `Halo! Saya baru saja melakukan reservasi dengan kode ${completedBooking.reservation_code} atas nama ${completedBooking.guest_name} untuk periode menginap ${completedBooking.check_in} sampai ${completedBooking.check_out}. Mohon informasi dan konfirmasinya. Terima kasih!`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-status-success hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-widest px-8 py-4 rounded shadow-md transition-all"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Notify Concierge on WhatsApp</span>
+                <span>Hubungi Staf via WhatsApp</span>
               </a>
 
               <button
                 onClick={() => setCompletedBooking(null)}
                 className="w-full sm:w-auto text-xs text-forest hover:text-gold uppercase tracking-wider py-3 px-6 rounded border border-bordercolor"
               >
-                Make Another Booking
+                Buat Reservasi Baru
               </button>
             </div>
           </div>
@@ -230,13 +230,13 @@ export default function KontakBookingSection({
               <div className="mb-8">
                 <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-gold" />
-                  <span>1. Stay Dates & Party Size</span>
+                  <span>1. Tanggal Menginap & Jumlah Tamu</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Check-In Date
+                      Tanggal Check-In
                     </label>
                     <input
                       type="date"
@@ -249,7 +249,7 @@ export default function KontakBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Check-Out Date
+                      Tanggal Check-Out
                     </label>
                     <input
                       type="date"
@@ -262,14 +262,14 @@ export default function KontakBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Dewasa (12+ yrs)
+                      Dewasa (Usia 12+ tahun)
                     </label>
                     <select
                       value={adults}
                       onChange={(e) => setDewasa(Number(e.target.value))}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                     >
-                      <option value={1}>1 Adult</option>
+                      <option value={1}>1 Dewasa</option>
                       <option value={2}>2 Dewasa</option>
                       <option value={3}>3 Dewasa</option>
                     </select>
@@ -277,7 +277,7 @@ export default function KontakBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Anak-anak (0-11 yrs)
+                      Anak-anak (Usia 0-11 tahun)
                     </label>
                     <select
                       value={children}
@@ -285,7 +285,7 @@ export default function KontakBookingSection({
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                     >
                       <option value={0}>0 Anak-anak</option>
-                      <option value={1}>1 Child</option>
+                      <option value={1}>1 Anak</option>
                       <option value={2}>2 Anak-anak</option>
                     </select>
                   </div>
@@ -296,7 +296,7 @@ export default function KontakBookingSection({
               <div className="mb-8">
                 <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
                   <BedDouble className="w-5 h-5 text-gold" />
-                  <span>2. Select Suite or Residence</span>
+                  <span>2. Pilih Kamar atau Suite</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -323,7 +323,7 @@ export default function KontakBookingSection({
                             {room.name}
                           </h4>
                           <span className="font-bold text-xs text-gold-700">
-                            {formatPrice(room.base_price_cents / 100, room.currency)}/nt
+                            {formatPrice(room.base_price_cents / 100, room.currency)}/malam
                           </span>
                         </div>
                         <p className="text-[11px] text-mutedgray mt-0.5 line-clamp-1">{room.tagline}</p>
@@ -340,7 +340,7 @@ export default function KontakBookingSection({
               <div className="mb-8">
                 <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
                   <Users className="w-5 h-5 text-gold" />
-                  <span>3. Tamu Kontak & Permintaan Khusus</span>
+                  <span>3. Informasi Kontak & Permintaan Khusus</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -374,7 +374,7 @@ export default function KontakBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Mobile / WhatsApp Phone *
+                      Nomor Telepon / WhatsApp *
                     </label>
                     <input
                       type="tel"
@@ -390,11 +390,11 @@ export default function KontakBookingSection({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Permintaan Khusus (Airport Greeting, Dietary, Anniversary)
+                      Permintaan Khusus (Penjemputan, Makanan, Perayaan, dll)
                     </label>
                     <textarea
                       rows={2}
-                      placeholder="Please let us know your flight arrival number, dietary needs, or bedding preferences..."
+                      placeholder="Tuliskan perkiraan waktu kedatangan, preferensi tempat tidur, atau permintaan lainnya..."
                       value={specialRequests}
                       onChange={(e) => setSpecialRequests(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
@@ -403,7 +403,7 @@ export default function KontakBookingSection({
 
                   <div>
                     <label className="block text-xs uppercase tracking-wider font-semibold text-charcoal mb-1.5">
-                      Promo / Privilege Code
+                      Kode Promo / Diskon
                     </label>
                     <div className="relative">
                       <input
@@ -417,7 +417,7 @@ export default function KontakBookingSection({
                     </div>
                     {discountRate > 0 && (
                       <span className="text-[10px] text-status-success font-semibold mt-1 block">
-                        ✓ {Math.round(discountRate * 100)}% privilege discount active
+                        ✓ {Math.round(discountRate * 100)}% diskon promo berhasil diterapkan
                       </span>
                     )}
                   </div>
@@ -428,7 +428,7 @@ export default function KontakBookingSection({
               <div className="bg-ivory-100 p-6 rounded-xl border border-bordercolor flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-xs uppercase tracking-wider text-mutedgray block">
-                    Perkiraan Total for {nights} Night{nights > 1 ? 's' : ''}
+                    Perkiraan Total untuk {nights} Malam
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-editorial text-3xl font-bold text-forest">
@@ -441,7 +441,7 @@ export default function KontakBookingSection({
                     )}
                   </div>
                   <span className="text-[11px] text-mutedgray block mt-0.5">
-                    *Taxes and gourmet breakfast included. Payment due upon arrival.
+                    *Sudah termasuk pajak dan sarapan. Pembayaran dapat diselesaikan saat kedatangan.
                   </span>
                 </div>
 
@@ -451,11 +451,11 @@ export default function KontakBookingSection({
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold px-8 py-4 rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50"
                 >
                   {isKirimting ? (
-                    <span>Securing Suite...</span>
+                    <span>Memproses Reservasi...</span>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 text-gold" />
-                      <span>Confirm Direct Booking</span>
+                      <span>Konfirmasi Reservasi Sekarang</span>
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </>
                   )}
