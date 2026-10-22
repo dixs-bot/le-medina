@@ -21,8 +21,8 @@ import {
   BedDouble,
   DollarSign,
   UtensilsCrossed,
-  Pengaturan,
-  Cari,
+  Settings,
+  Search,
   Filter,
   CheckCircle,
   Clock,
@@ -259,7 +259,7 @@ export default function AdminDashboardClient({
                   : 'text-ivory-200 hover:bg-forest-800'
               }`}
             >
-              <Pengaturan className="w-4 h-4" />
+              <Settings className="w-4 h-4" />
               <span>Site & Operations</span>
             </button>
           </div>
@@ -424,7 +424,7 @@ export default function AdminDashboardClient({
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative">
-                    <Cari className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
+                    <Search className="w-3.5 h-3.5 text-mutedgray absolute left-3 top-3" />
                     <input
                       type="text"
                       placeholder="Cari guest or code..."
