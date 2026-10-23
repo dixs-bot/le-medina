@@ -82,6 +82,11 @@ export interface RoomRate {
   price_cents: number;
   min_stay_nights: number;
   is_active: boolean;
+  rate_type?: 'seasonal' | 'weekend' | 'holiday' | 'custom';
+  /** ISO weekdays: Monday=1 ... Sunday=7; used by recurring weekend rules. */
+  days_of_week?: number[];
+  priority?: number;
+  updated_at?: string;
 }
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';

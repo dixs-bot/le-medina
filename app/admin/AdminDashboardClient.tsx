@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import {
   Offer,
   Role,
   ReservationStatus,
+  RoomRate,
 } from '../../lib/types';
 import { formatPrice } from '../../lib/utils';
 import {
@@ -52,6 +53,19 @@ interface AdminDashboardClientProps {
   initialSitePengaturan: SitePengaturan;
   offers: Offer[];
   currentUser?: AdminUser;
+}
+
+type RoomRateKind = 'seasonal' | 'weekend' | 'holiday' | 'custom';
+
+interface RoomRateDraft {
+  rate_name: string;
+  rate_type: RoomRateKind;
+  price_idr: string;
+  start_date: string;
+  end_date: string;
+  min_stay_nights: string;
+  days_of_week: number[];
+  is_active: boolean;
 }
 
 interface WalkInAvailableRoom {
@@ -150,6 +164,143 @@ export default function AdminDashboardClient({
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
   const [walkInError, setWalkInError] = useState<string | null>(null);
   const [walkInSaving, setWalkInSaving] = useState(false);
+
+
+  // Live Supabase room / pricing administration. These values are loaded from the
+  // configured production database; the old hard-coded Winter demo cards are not used.
+  const [managedRoomTypes, setManagedRoomTypes] = useState<RoomType[]>(roomTypes);
+  const [managedRooms, setManagedRooms] = useState<Room[]>(rooms);
+  const [managedRoomRates, setManagedRoomRates] = useState<RoomRate[]>([]);
+  const [showInactiveRates, setShowInactiveRates] = useState(false);
+  const [roomManagementLoading, setRoomManagementLoading] = useState(false);
+  const [roomManagementSaving, setRoomManagementSaving] = useState(false);
+  const [roomManagementError, setRoomManagementError] = useState<string | null>(null);
+  const [roomManagementMessage, setRoomManagementMessage] = useState<string | null>(null);
+  const [basePriceDrafts, setBasePriceDrafts] = useState<Record<string, string>>({});
+  const [rateDrafts, setRateDrafts] = useState<Record<string, RoomRateDraft>>({});
+
+  const [newRoomNumber, setNewRoomNumber] = useState('');
+  const [newRoomTypeId, setNewRoomTypeId] = useState(roomTypes.find((item) => item.is_active)?.id || '');
+  const [newRoomFloor, setNewRoomFloor] = useState('1');
+  const [newRoomWing, setNewRoomWing] = useState('Sayap Utama');
+
+  const [newRateName, setNewRateName] = useState('Tarif Akhir Pekan');
+  const [newRateType, setNewRateType] = useState<RoomRateKind>('weekend');
+  const [newRateRoomTypeId, setNewRateRoomTypeId] = useState(roomTypes.find((item) => item.is_active)?.id || '');
+  const [newRatePriceIdr, setNewRatePriceIdr] = useState('');
+  const [newRateStartDate, setNewRateStartDate] = useState(getJakartaDateISO());
+  const [newRateEndDate, setNewRateEndDate] = useState(getJakartaDateISO(365));
+  const [newRateMinStay, setNewRateMinStay] = useState('1');
+  const [newRateDaysOfWeek, setNewRateDaysOfWeek] = useState<number[]>([6, 7]);
+
+  const reloadRoomManagement = useCallback(async () => {
+    setRoomManagementLoading(true);
+    setRoomManagementError(null);
+    try {
+      const response = await fetch('/api/admin/room-management', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal membaca data kamar dan tarif dari Supabase.');
+
+      const nextTypes = (Array.isArray(payload?.roomTypes) ? payload.roomTypes : []) as RoomType[];
+      const nextRooms = (Array.isArray(payload?.rooms) ? payload.rooms : []) as Room[];
+      const nextRates = (Array.isArray(payload?.rates) ? payload.rates : []) as RoomRate[];
+      setManagedRoomTypes(nextTypes);
+      setManagedRooms(nextRooms);
+      setManagedRoomRates(nextRates);
+      setBasePriceDrafts(Object.fromEntries(nextTypes.map((type) => [
+        type.id, String(Math.round(Number(type.base_price_cents || 0) / 100)),
+      ])));
+      setRateDrafts(Object.fromEntries(nextRates.map((rate) => [rate.id, {
+        rate_name: rate.rate_name || '',
+        rate_type: rate.rate_type || 'seasonal',
+        price_idr: String(Math.round(Number(rate.price_cents || 0) / 100)),
+        start_date: String(rate.start_date || ''),
+        end_date: String(rate.end_date || ''),
+        min_stay_nights: String(rate.min_stay_nights || 1),
+        days_of_week: Array.isArray(rate.days_of_week) ? rate.days_of_week.map(Number) : [],
+        is_active: Boolean(rate.is_active),
+      }])));
+      setNewRoomTypeId((previous) => nextTypes.some((type) => type.id === previous && type.is_active)
+        ? previous : (nextTypes.find((type) => type.is_active)?.id || ''));
+      setNewRateRoomTypeId((previous) => nextTypes.some((type) => type.id === previous && type.is_active)
+        ? previous : (nextTypes.find((type) => type.is_active)?.id || ''));
+    } catch (error) {
+      setRoomManagementError(error instanceof Error ? error.message : 'Gagal memuat data manajemen kamar.');
+    } finally {
+      setRoomManagementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'rooms' || activeTab === 'rates') void reloadRoomManagement();
+  }, [activeTab, reloadRoomManagement]);
+
+  const submitRoomManagement = async (body: Record<string, unknown>, successText: string): Promise<boolean> => {
+    if (roomManagementSaving) return false;
+    setRoomManagementSaving(true);
+    setRoomManagementError(null);
+    setRoomManagementMessage(null);
+    try {
+      const response = await fetch('/api/admin/room-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Perubahan gagal disimpan (HTTP ${response.status}).`);
+      }
+      setRoomManagementMessage(successText);
+      await reloadRoomManagement();
+      router.refresh();
+      return true;
+    } catch (error) {
+      setRoomManagementError(error instanceof Error ? error.message : 'Perubahan gagal disimpan ke Supabase.');
+      return false;
+    } finally {
+      setRoomManagementSaving(false);
+    }
+  };
+
+  const handleAddPhysicalRoom = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const saved = await submitRoomManagement({
+      action: 'create_room', room_number: newRoomNumber, room_type_id: newRoomTypeId,
+      floor: Number(newRoomFloor), wing: newRoomWing,
+    }, `Kamar ${newRoomNumber.trim().toUpperCase()} berhasil ditambahkan ke inventaris Supabase.`);
+    if (saved) setNewRoomNumber('');
+  };
+
+  const handleSaveBasePrice = async (roomType: RoomType) => {
+    await submitRoomManagement({
+      action: 'update_base_price', room_type_id: roomType.id, price_idr: Number(basePriceDrafts[roomType.id]),
+    }, `Harga dasar ${roomType.name} berhasil diperbarui di Supabase.`);
+  };
+
+  const handleAddRateRule = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const saved = await submitRoomManagement({
+      action: 'create_rate', room_type_id: newRateRoomTypeId, rate_name: newRateName,
+      rate_type: newRateType, price_idr: Number(newRatePriceIdr), start_date: newRateStartDate,
+      end_date: newRateEndDate, min_stay_nights: Number(newRateMinStay),
+      days_of_week: newRateType === 'weekend' ? newRateDaysOfWeek : [],
+    }, 'Aturan tarif berhasil ditambahkan. Harga pada website akan mengikuti aturan Supabase.');
+    if (saved) setNewRatePriceId('');
+  };
+
+  const updateRateDraft = (rateId: string, patch: Partial<RoomRateDraft>) => {
+    setRateDrafts((previous) => ({
+      ...previous,
+      [rateId]: { ...previous[rateId], ...patch },
+    }));
+  };
+
+  const handleSaveRateRule = async (rateId: string) => {
+    const draft = rateDrafts[rateId];
+    if (!draft) return;
+    await submitRoomManagement({ action: 'update_rate', id: rateId, ...draft, price_idr: Number(draft.price_idr), min_stay_nights: Number(draft.min_stay_nights) }, 'Aturan tarif berhasil diperbarui di Supabase.');
+  };
 
   useEffect(() => {
     if (!walkInOpen) return;
@@ -439,6 +590,7 @@ export default function AdminDashboardClient({
     currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'reservation_staff';
   const canManageContent =
     currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'content_editor';
+  const canManageRoomCatalog = currentRole === 'super_admin' || currentRole === 'admin';
 
   return (
     <div className="min-h-screen bg-ivory text-charcoal flex flex-col">
@@ -671,7 +823,7 @@ export default function AdminDashboardClient({
                     {metrics.occupancyRatePercentage}%
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
-                    Dari total 7 unit kamar hotel
+                    Dari total {managedRooms.length} unit kamar hotel
                   </span>
                 </div>
 
@@ -1159,73 +1311,110 @@ export default function AdminDashboardClient({
           {activeTab === 'rooms' && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Inventaris Fisik & Status Kamar
-                </h1>
-                <p className="text-xs text-mutedgray">
-                  Pemantauan status pemeliharaan, kesiapan, dan alokasi kamar di seluruh area hotel.
-                </p>
+                <h1 className="font-editorial text-3xl font-bold text-forest mb-1">Inventaris Fisik & Status Kamar</h1>
+                <p className="text-xs text-mutedgray">Data kamar dibaca dan disimpan langsung ke Supabase. Kamar yang baru ditambahkan langsung masuk ke daftar inventaris.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {rooms.map((room) => {
-                  const roomType = roomTypes.find((rt) => rt.id === room.room_type_id);
-                  const operationalStatus = room.current_status || room.status;
-                  const statusLabel = operationalStatus === 'available' ? 'Tersedia'
-                    : operationalStatus === 'reserved' ? 'Reserved'
-                    : operationalStatus === 'occupied' ? 'Sudah Ditempati'
-                    : operationalStatus === 'maintenance' ? 'Pemeliharaan'
-                    : operationalStatus === 'blocked' ? 'Ditutup' : operationalStatus;
-                  const statusClass = operationalStatus === 'available'
-                    ? 'bg-status-success/10 text-status-success'
-                    : operationalStatus === 'occupied'
-                      ? 'bg-red-100 text-red-800'
-                      : operationalStatus === 'reserved'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-status-warning/10 text-status-warning';
-                  return (
-                    <div
-                      key={room.id}
-                      className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm space-y-3"
-                    >
-                      <div className="flex justify-between items-start gap-3">
-                        <div>
-                          <span className="text-xs font-mono uppercase tracking-wider text-mutedgray block">
-                            Lantai {room.floor} • Sayap {room.wing}
-                          </span>
-                          <h3 className="font-editorial text-xl font-bold text-forest">
-                            {room.room_number}
-                          </h3>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
+              {roomManagementError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{roomManagementError}</div>}
+              {roomManagementMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{roomManagementMessage}</div>}
 
-                      <div className="text-xs text-charcoal/80">
-                        <span className="text-mutedgray block">Tipe Kamar:</span>
-                        <strong className="text-forest">{roomType?.name || 'Tipe lama / arsip reservasi'}</strong>
-                      </div>
+              <section className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-5 sm:p-6">
+                <div className="mb-4">
+                  <h2 className="font-editorial text-xl font-bold text-forest">Tambah Kamar Fisik</h2>
+                  <p className="text-xs text-mutedgray mt-1">Gunakan ini saat hotel menambah unit kamar yang belum tercatat. Nomor kamar harus unik.</p>
+                </div>
+                {!canManageRoomCatalog ? (
+                  <p className="text-xs text-mutedgray">Akun/peran saat ini hanya dapat melihat inventaris. Admin dapat menambah kamar.</p>
+                ) : (
+                  <form onSubmit={(event) => void handleAddPhysicalRoom(event)} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+                    <label className="text-xs font-semibold text-forest space-y-1.5">
+                      Nomor kamar *
+                      <input required maxLength={30} value={newRoomNumber} onChange={(event) => setNewRoomNumber(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="105" />
+                    </label>
+                    <label className="text-xs font-semibold text-forest space-y-1.5">
+                      Tipe kamar *
+                      <select required value={newRoomTypeId} onChange={(event) => setNewRoomTypeId(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal">
+                        <option value="">Pilih tipe kamar</option>
+                        {managedRoomTypes.filter((type) => type.is_active).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold text-forest space-y-1.5">
+                      Lantai *
+                      <input required type="number" min={1} max={100} value={newRoomFloor} onChange={(event) => setNewRoomFloor(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                    </label>
+                    <label className="text-xs font-semibold text-forest space-y-1.5">
+                      Sayap / area
+                      <input maxLength={60} value={newRoomWing} onChange={(event) => setNewRoomWing(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Sayap Standar" />
+                    </label>
+                    <button type="submit" disabled={roomManagementSaving || !newRoomTypeId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                      {roomManagementSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <BedDouble className="h-4 w-4" />}
+                      Simpan Kamar
+                    </button>
+                  </form>
+                )}
+              </section>
 
-                      {room.current_guest && operationalStatus !== 'available' && (
-                        <div className="rounded-md bg-ivory-200/70 border border-bordercolor p-3 text-xs">
-                          <p className="font-semibold text-forest">{room.current_guest}</p>
-                          {room.current_reservation_code && <p className="text-mutedgray mt-0.5">Kode: {room.current_reservation_code}</p>}
-                          {room.current_check_in && room.current_check_in > getJakartaDateISO() && <p className="text-mutedgray mt-0.5">Rencana check-in: {room.current_check_in}</p>}
-                          {room.current_check_out && <p className="text-mutedgray mt-0.5">Rencana check-out: {room.current_check_out}</p>}
-                        </div>
-                      )}
-
-                      <div className="text-xs text-mutedgray pt-2 border-t border-bordercolor flex justify-between">
-                        <span>Tarif Dasar:</span>
-                        <strong className="text-gold-700">
-                          {roomType ? formatPrice(roomType.base_price_cents / 100, 'IDR') : '—'}/malam
-                        </strong>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-editorial text-xl font-bold text-forest">Daftar Kamar dari Database</h2>
+                  <p className="text-xs text-mutedgray">{managedRooms.length} unit terdaftar • status reservasi ditampilkan dari alokasi aktif.</p>
+                </div>
+                <button type="button" onClick={() => void reloadRoomManagement()} disabled={roomManagementLoading} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor bg-ivory px-3 py-2 text-xs font-semibold text-forest disabled:opacity-50">
+                  <RefreshCw className={`h-3.5 w-3.5 ${roomManagementLoading ? 'animate-spin' : ''}`} /> Segarkan
+                </button>
               </div>
+
+              {roomManagementLoading && managedRooms.length === 0 ? (
+                <div className="rounded-xl border border-bordercolor bg-ivory p-8 text-center text-sm text-mutedgray">Memuat inventaris Supabase...</div>
+              ) : managedRooms.length === 0 ? (
+                <div className="rounded-xl border border-bordercolor bg-ivory p-8 text-center text-sm text-mutedgray">Belum ada kamar dalam inventaris database.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {managedRooms.map((room) => {
+                    const roomType = managedRoomTypes.find((type) => type.id === room.room_type_id);
+                    const operationalStatus = room.current_status || room.status;
+                    const statusLabel = operationalStatus === 'available' ? 'Tersedia'
+                      : operationalStatus === 'reserved' ? 'Reserved'
+                      : operationalStatus === 'occupied' ? 'Sudah Ditempati'
+                      : operationalStatus === 'maintenance' ? 'Pemeliharaan'
+                      : operationalStatus === 'blocked' ? 'Ditutup' : operationalStatus;
+                    const statusClass = operationalStatus === 'available'
+                      ? 'bg-status-success/10 text-status-success'
+                      : operationalStatus === 'occupied'
+                        ? 'bg-red-100 text-red-800'
+                        : operationalStatus === 'reserved'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-status-warning/10 text-status-warning';
+                    return (
+                      <div key={room.id} className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm space-y-3">
+                        <div className="flex justify-between items-start gap-3">
+                          <div>
+                            <span className="text-xs font-mono uppercase tracking-wider text-mutedgray block">Lantai {room.floor} • Sayap {room.wing}</span>
+                            <h3 className="font-editorial text-xl font-bold text-forest">{room.room_number}</h3>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold ${statusClass}`}>{statusLabel}</span>
+                        </div>
+                        <div className="text-xs text-charcoal/80">
+                          <span className="text-mutedgray block">Tipe Kamar:</span>
+                          <strong className="text-forest">{roomType?.name || 'Tipe lama / arsip reservasi'}</strong>
+                        </div>
+                        {room.current_guest && operationalStatus !== 'available' && (
+                          <div className="rounded-md bg-ivory-200/70 border border-bordercolor p-3 text-xs">
+                            <p className="font-semibold text-forest">{room.current_guest}</p>
+                            {room.current_reservation_code && <p className="text-mutedgray mt-0.5">Kode: {room.current_reservation_code}</p>}
+                            {room.current_check_in && <p className="text-mutedgray mt-0.5">Check-in: {room.current_check_in}</p>}
+                            {room.current_check_out && <p className="text-mutedgray mt-0.5">Check-out: {room.current_check_out}</p>}
+                          </div>
+                        )}
+                        <div className="text-xs text-mutedgray pt-2 border-t border-bordercolor flex justify-between">
+                          <span>Tarif Dasar:</span>
+                          <strong className="text-gold-700">{roomType ? `${formatPrice(roomType.base_price_cents / 100, 'IDR')}/malam` : '—'}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1233,64 +1422,179 @@ export default function AdminDashboardClient({
           {activeTab === 'rates' && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Tarif Musiman & Aturan Durasi Menginap
-                </h1>
-                <p className="text-xs text-mutedgray">
-                  Pengaturan rentang tarif musiman, periode liburan, dan batas minimum durasi inap.
-                </p>
+                <h1 className="font-editorial text-3xl font-bold text-forest mb-1">Tarif Kamar & Aturan Harga</h1>
+                <p className="text-xs text-mutedgray">Harga dan aturan di bawah dibaca langsung dari Supabase. Perubahan akan dipakai mesin perhitungan harga pada formulir pemesanan website.</p>
               </div>
 
-              <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm overflow-hidden p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-bordercolor pb-3">
-                    <h3 className="font-editorial text-lg font-bold text-forest">
-                      Aturan Penetapan Tarif Aktif
-                    </h3>
-                    <span className="text-xs text-status-success font-semibold">
-                      Perhitungan Otomatis Aktif
-                    </span>
+              {roomManagementError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{roomManagementError}</div>}
+              {roomManagementMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{roomManagementMessage}</div>}
+              {roomManagementLoading && <div className="rounded-lg border border-bordercolor bg-ivory p-3 text-sm text-mutedgray">Memuat harga aktual dari Supabase...</div>}
+
+              <section className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-5 sm:p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 border-b border-bordercolor pb-3">
+                  <div>
+                    <h2 className="font-editorial text-xl font-bold text-forest">Harga Dasar per Tipe Kamar</h2>
+                    <p className="text-xs text-mutedgray mt-1">Harga yang saat ini tersimpan di tabel <code>room_types</code>. Tidak ada harga contoh yang ditulis langsung di halaman ini.</p>
                   </div>
+                  <span className="text-xs font-semibold text-status-success">Sumber: Supabase</span>
+                </div>
+                {managedRoomTypes.filter((type) => type.is_active).length === 0 ? (
+                  <p className="text-sm text-mutedgray">Belum ada tipe kamar aktif di Supabase.</p>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {managedRoomTypes.filter((type) => type.is_active).map((type) => (
+                      <div key={type.id} className="rounded-lg border border-bordercolor bg-ivory-100 p-4 space-y-3">
+                        <div>
+                          <h3 className="font-editorial text-lg font-bold text-forest">{type.name}</h3>
+                          <p className="text-[11px] text-mutedgray">Harga saat ini: {formatPrice(type.base_price_cents / 100, type.currency || 'IDR')} / malam</p>
+                        </div>
+                        <label className="block text-xs font-semibold text-forest space-y-1.5">
+                          Harga dasar baru (Rupiah)
+                          <input type="number" required min={1} max={20000000} step={1000} value={basePriceDrafts[type.id] ?? ''} onChange={(event) => setBasePriceDrafts((previous) => ({ ...previous, [type.id]: event.target.value }))} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                        </label>
+                        <button type="button" disabled={!canManageRoomCatalog || roomManagementSaving} onClick={() => void handleSaveBasePrice(type)} className="w-full rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                          {roomManagementSaving ? 'Menyimpan...' : 'Simpan Harga Dasar'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!canManageRoomCatalog && <p className="text-xs text-mutedgray">Perubahan harga hanya dapat disimpan oleh admin.</p>}
+              </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-ivory-100 border border-bordercolor">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-editorial text-base font-bold text-forest">
-                          Winter Holiday Oasis High Season
-                        </h4>
-                        <span className="bg-gold/20 text-gold-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          Rp 5.200.000 / malam
-                        </span>
-                      </div>
-                      <p className="text-xs text-mutedgray mb-2">
-                        Periode: <strong>Dec 20, 2026 – Jan 05, 2027</strong>
-                      </p>
-                      <div className="text-[11px] text-charcoal/80 space-y-1">
-                        <div>• Berlaku untuk: Sultana Royal Courtyard Suite</div>
-                        <div>• Batas minimum menginap: 3 malam</div>
-                      </div>
+              <section className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-5 sm:p-6">
+                <div className="mb-4">
+                  <h2 className="font-editorial text-xl font-bold text-forest">Tambah Harga Akhir Pekan / Libur Panjang</h2>
+                  <p className="text-xs text-mutedgray mt-1">Tetapkan harga khusus sesuai kesepakatan dengan owner. Harga libur panjang mempunyai prioritas di atas harga akhir pekan saat tanggalnya bertumpuk.</p>
+                </div>
+                {!canManageRoomCatalog ? (
+                  <p className="text-xs text-mutedgray">Akun/peran saat ini hanya dapat melihat tarif. Admin dapat mengubah harga.</p>
+                ) : (
+                  <form onSubmit={(event) => void handleAddRateRule(event)} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Nama aturan *
+                        <input required maxLength={100} value={newRateName} onChange={(event) => setNewRateName(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: Libur Imlek" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Tipe kamar *
+                        <select required value={newRateRoomTypeId} onChange={(event) => setNewRateRoomTypeId(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal">
+                          <option value="">Pilih tipe kamar</option>
+                          {managedRoomTypes.filter((type) => type.is_active).map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Jenis aturan *
+                        <select value={newRateType} onChange={(event) => {
+                          const kind = event.target.value as RoomRateKind;
+                          setNewRateType(kind);
+                          setNewRateName(kind === 'weekend' ? 'Tarif Akhir Pekan' : kind === 'holiday' ? 'Tarif Libur Panjang' : kind === 'custom' ? 'Tarif Khusus' : 'Tarif Musiman');
+                        }} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal">
+                          <option value="weekend">Akhir pekan berulang</option>
+                          <option value="holiday">Libur panjang / hari besar</option>
+                          <option value="seasonal">Musiman / periode tertentu</option>
+                          <option value="custom">Tarif khusus</option>
+                        </select>
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Harga khusus per malam (Rupiah) *
+                        <input required type="number" min={1} max={20000000} step={1000} value={newRatePriceIdr} onChange={(event) => setNewRatePriceIdr(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Mis. 250000" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Berlaku mulai *
+                        <input required type="date" value={newRateStartDate} onChange={(event) => setNewRateStartDate(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Berlaku sampai *
+                        <input required type="date" min={newRateStartDate} value={newRateEndDate} onChange={(event) => setNewRateEndDate(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Minimum menginap (malam)
+                        <input required type="number" min={1} max={30} value={newRateMinStay} onChange={(event) => setNewRateMinStay(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
                     </div>
+                    {newRateType === 'weekend' && (
+                      <div className="rounded-lg border border-bordercolor bg-ivory-100 p-4">
+                        <p className="text-xs font-semibold text-forest mb-2">Terapkan pada hari apa saja? (berulang setiap minggu)</p>
+                        <div className="flex flex-wrap gap-4">
+                          {[{ day: 1, label: 'Senin' }, { day: 2, label: 'Selasa' }, { day: 3, label: 'Rabu' }, { day: 4, label: 'Kamis' }, { day: 5, label: 'Jumat' }, { day: 6, label: 'Sabtu' }, { day: 7, label: 'Minggu' }].map(({ day, label }) => (
+                            <label key={day} className="inline-flex items-center gap-2 text-xs text-charcoal">
+                              <input type="checkbox" checked={newRateDaysOfWeek.includes(day)} onChange={(event) => setNewRateDaysOfWeek((previous) => event.target.checked ? Array.from(new Set([...previous, day])).sort((a, b) => a - b) : previous.filter((item) => item !== day))} />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-mutedgray mt-2">Contoh akhir pekan umum: centang Sabtu dan Minggu. Aturan hanya berlaku dalam rentang tanggal yang Anda pilih.</p>
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <button type="submit" disabled={roomManagementSaving || !newRateRoomTypeId} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-5 py-3 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                        {roomManagementSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+                        Simpan Aturan Harga
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
 
-                    <div className="p-4 rounded-lg bg-ivory-100 border border-bordercolor">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-editorial text-base font-bold text-forest">
-                          Atlas Winter Starlight Season
-                        </h4>
-                        <span className="bg-gold/20 text-gold-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          Rp 6.500.000 / malam
-                        </span>
-                      </div>
-                      <p className="text-xs text-mutedgray mb-2">
-                        Periode: <strong>Nov 01, 2026 – Dec 31, 2026</strong>
-                      </p>
-                      <div className="text-[11px] text-charcoal/80 space-y-1">
-                        <div>• Berlaku untuk: Atlas Panorama Rooftop Suite</div>
-                        <div>• Batas minimum menginap: 2 malam</div>
-                      </div>
-                    </div>
+              <section className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-5 sm:p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-bordercolor pb-3">
+                  <div>
+                    <h2 className="font-editorial text-xl font-bold text-forest">Aturan Tarif dari Supabase</h2>
+                    <p className="text-xs text-mutedgray mt-1">Simpan perubahan pada setiap kartu untuk memperbarui harga yang dipakai pada pemesanan baru.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="inline-flex items-center gap-2 text-[11px] text-mutedgray">
+                      <input type="checkbox" checked={showInactiveRates} onChange={(event) => setShowInactiveRates(event.target.checked)} /> Tampilkan nonaktif
+                    </label>
+                    <button type="button" onClick={() => void reloadRoomManagement()} disabled={roomManagementLoading} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor bg-white px-3 py-2 text-xs font-semibold text-forest disabled:opacity-50">
+                      <RefreshCw className={`h-3.5 w-3.5 ${roomManagementLoading ? 'animate-spin' : ''}`} /> Segarkan Tarif
+                    </button>
                   </div>
                 </div>
-              </div>
+                {managedRoomRates.filter((rate) => rate.is_active || showInactiveRates).length === 0 && !roomManagementLoading ? (
+                  <p className="rounded-lg border border-dashed border-bordercolor p-6 text-center text-sm text-mutedgray">Belum ada aturan harga aktif. Tambahkan tarif akhir pekan atau libur panjang di atas; harga dasar tetap dipakai saat tidak ada aturan khusus.</p>
+                ) : (
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {managedRoomRates.filter((rate) => rate.is_active || showInactiveRates).map((rate) => {
+                      const draft = rateDrafts[rate.id];
+                      const type = managedRoomTypes.find((item) => item.id === rate.room_type_id);
+                      if (!draft) return null;
+                      return (
+                        <div key={rate.id} className="rounded-lg border border-bordercolor bg-ivory-100 p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-mutedgray">{type?.name || 'Tipe kamar tidak aktif'} · {draft.rate_type === 'weekend' ? 'Akhir pekan' : draft.rate_type === 'holiday' ? 'Libur panjang' : draft.rate_type === 'custom' ? 'Khusus' : 'Musiman'}</p>
+                              <p className="text-[11px] text-mutedgray mt-1">Harga aktif dari database: {formatPrice(rate.price_cents / 100, type?.currency || 'IDR')} / malam</p>
+                            </div>
+                            <span className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${draft.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}>{draft.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label className="text-xs font-semibold text-forest space-y-1">Nama aturan<input maxLength={100} value={draft.rate_name} onChange={(event) => updateRateDraft(rate.id, { rate_name: event.target.value })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-forest space-y-1">Jenis<select value={draft.rate_type} onChange={(event) => updateRateDraft(rate.id, { rate_type: event.target.value as RoomRateKind })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal"><option value="weekend">Akhir pekan</option><option value="holiday">Libur panjang</option><option value="seasonal">Musiman</option><option value="custom">Khusus</option></select></label>
+                            <label className="text-xs font-semibold text-forest space-y-1">Harga / malam (Rupiah)<input type="number" min={1} max={20000000} step={1000} value={draft.price_idr} onChange={(event) => updateRateDraft(rate.id, { price_idr: event.target.value })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-forest space-y-1">Minimum malam<input type="number" min={1} max={30} value={draft.min_stay_nights} onChange={(event) => updateRateDraft(rate.id, { min_stay_nights: event.target.value })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-forest space-y-1">Tanggal mulai<input type="date" value={draft.start_date} onChange={(event) => updateRateDraft(rate.id, { start_date: event.target.value })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-forest space-y-1">Tanggal akhir<input type="date" min={draft.start_date} value={draft.end_date} onChange={(event) => updateRateDraft(rate.id, { end_date: event.target.value })} className="w-full rounded border border-bordercolor bg-white px-3 py-2 text-sm font-normal" /></label>
+                          </div>
+                          {draft.rate_type === 'weekend' && (
+                            <div className="rounded border border-bordercolor bg-white p-3">
+                              <p className="text-[11px] font-semibold text-forest mb-2">Hari yang dikenai tarif</p>
+                              <div className="flex flex-wrap gap-x-3 gap-y-2">
+                                {[{ day: 1, label: 'Sen' }, { day: 2, label: 'Sel' }, { day: 3, label: 'Rab' }, { day: 4, label: 'Kam' }, { day: 5, label: 'Jum' }, { day: 6, label: 'Sab' }, { day: 7, label: 'Min' }].map(({ day, label }) => <label key={day} className="inline-flex items-center gap-1.5 text-[11px] text-charcoal"><input type="checkbox" checked={draft.days_of_week.includes(day)} onChange={(event) => updateRateDraft(rate.id, { days_of_week: event.target.checked ? Array.from(new Set([...draft.days_of_week, day])).sort((a, b) => a - b) : draft.days_of_week.filter((item) => item !== day) })} />{label}</label>)}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+                            <label className="inline-flex items-center gap-2 text-xs font-medium text-charcoal"><input type="checkbox" checked={draft.is_active} onChange={(event) => updateRateDraft(rate.id, { is_active: event.target.checked })} /> Aturan aktif pada perhitungan harga</label>
+                            <button type="button" disabled={!canManageRoomCatalog || roomManagementSaving} onClick={() => void handleSaveRateRule(rate.id)} className="rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">{roomManagementSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             </div>
           )}
 

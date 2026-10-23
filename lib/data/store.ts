@@ -903,6 +903,9 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       if (message.includes('no rooms') || message.includes('not available')) {
         throw new Error('Mohon maaf, kamar tidak tersedia pada tanggal yang dipilih.');
       }
+      if (message.includes('minimum') || message.includes('minimal') || message.includes('masa inap')) {
+        throw new Error(error.message || 'Durasi menginap tidak memenuhi aturan tarif khusus.');
+      }
       throw new Error('Pemesanan belum dapat disimpan. Silakan coba kembali atau hubungi bagian reservasi.');
     }
 
