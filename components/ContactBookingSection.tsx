@@ -21,6 +21,10 @@ import {
 
 interface KontakBookingSectionProps {
   roomTypes: RoomType[];
+  checkIn: string;
+  checkOut: string;
+  onCheckInChange: (value: string) => void;
+  onCheckOutChange: (value: string) => void;
   preselectedRoomId?: string;
   appliedPromoCode?: string;
   whatsappNumber: string;
@@ -28,26 +32,22 @@ interface KontakBookingSectionProps {
 
 export default function KontakBookingSection({
   roomTypes,
+  checkIn,
+  checkOut,
+  onCheckInChange,
+  onCheckOutChange,
   preselectedRoomId,
   appliedPromoCode,
   whatsappNumber,
 }: KontakBookingSectionProps) {
-  // Booking dates default to the visitor's local date, not a fixed historical date.
-  const formatDateInput = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const todayStr = formatDateInput(today);
-  const tomorrowStr = formatDateInput(tomorrow);
+  // Booking dates are shared with the room-detail modal so the displayed room
+  // numbers always reflect the same date range as the booking form.
+  const todayStr = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })();
 
-  // Booking Form State
-  const [checkIn, setCheckIn] = useState(todayStr);
-  const [checkOut, setCheckOut] = useState(tomorrowStr);
+  // Booking form state other than dates.
   const [adults, setDewasa] = useState(2);
   const [children, setChildren] = useState(0);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState(
@@ -75,6 +75,45 @@ export default function KontakBookingSection({
     if (appliedPromoCode) setPromoCode(appliedPromoCode);
   }, [appliedPromoCode]);
 
+  // Show live availability in the form itself, not only inside the room modal.
+  // The final POST still goes through the atomic database allocator.
+  const [availableRoomCount, setAvailableRoomCount] = useState<number | null>(null);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedRoomTypeId || !checkIn || !checkOut || checkOut <= checkIn) {
+      setAvailableRoomCount(null);
+      setIsCheckingAvailability(false);
+      setAvailabilityError('Pilih tanggal check-in dan check-out yang valid untuk memeriksa kamar.');
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsCheckingAvailability(true);
+    setAvailableRoomCount(null);
+    setAvailabilityError(null);
+    fetch(`/api/availability?roomTypeId=${encodeURIComponent(selectedRoomTypeId)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || 'Ketersediaan kamar tidak dapat diperiksa.');
+        return payload;
+      })
+      .then((payload) => {
+        setAvailableRoomCount(Number(payload?.availableKamarCount || 0));
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setAvailabilityError(error instanceof Error ? error.message : 'Ketersediaan kamar tidak dapat diperiksa.');
+      })
+      .finally(() => setIsCheckingAvailability(false));
+
+    return () => controller.abort();
+  }, [selectedRoomTypeId, checkIn, checkOut]);
+
   // Pricing calculation preview
   const selectedRoom = roomTypes.find((r) => r.id === selectedRoomTypeId);
   const calcNights = () => {
@@ -98,6 +137,16 @@ export default function KontakBookingSection({
 
     if (new Date(checkOut) <= new Date(checkIn)) {
       setErrorMsg('Tanggal check-out harus setelah tanggal check-in.');
+      return;
+    }
+
+    if (isCheckingAvailability || availableRoomCount === null || availabilityError) {
+      setErrorMsg(availabilityError || 'Ketersediaan kamar belum berhasil diverifikasi. Silakan coba lagi sebelum mengirim reservasi.');
+      return;
+    }
+
+    if (availableRoomCount < 1) {
+      setErrorMsg(`Semua kamar tipe ${selectedRoom?.name || 'yang dipilih'} sudah dipesan atau tidak tersedia pada tanggal tersebut. Pilih tipe kamar lain atau ubah tanggal menginap.`);
       return;
     }
 
@@ -266,7 +315,8 @@ export default function KontakBookingSection({
                     <input
                       type="date"
                       value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
+                      min={todayStr}
+                      onChange={(e) => onCheckInChange(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                       required
                     />
@@ -279,7 +329,8 @@ export default function KontakBookingSection({
                     <input
                       type="date"
                       value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
+                      min={checkIn || todayStr}
+                      onChange={(e) => onCheckOutChange(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs focus:ring-2 focus:ring-gold focus:outline-none"
                       required
                     />
@@ -321,7 +372,7 @@ export default function KontakBookingSection({
               <div className="mb-8">
                 <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
                   <BedDouble className="w-5 h-5 text-gold" />
-                  <span>2. Pilih Kamar atau Suite</span>
+                  <span>2. Pilih Tipe Kamar</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -358,6 +409,19 @@ export default function KontakBookingSection({
                       </div>
                     </label>
                   ))}
+                </div>
+                <div role="status" aria-live="polite" className={`mt-4 rounded-lg border p-3 text-xs ${
+                  isCheckingAvailability ? 'border-slate-200 bg-slate-50 text-slate-700' :
+                  availabilityError ? 'border-red-200 bg-red-50 text-red-700' :
+                  availableRoomCount === 0 ? 'border-amber-300 bg-amber-50 text-amber-900' :
+                  availableRoomCount !== null && availableRoomCount > 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+                  'border-slate-200 bg-slate-50 text-slate-700'
+                }`}>
+                  {isCheckingAvailability ? 'Sedang memeriksa ketersediaan kamar untuk tanggal pilihan...' :
+                    availabilityError ? availabilityError :
+                    availableRoomCount === 0 ? `Semua kamar ${selectedRoom?.name || ''} sudah dipesan atau tidak tersedia untuk tanggal ini. Silakan pilih tipe kamar lain atau ubah tanggal menginap.` :
+                    availableRoomCount !== null ? `${availableRoomCount} kamar ${selectedRoom?.name || ''} tersedia untuk tanggal pilihan. Sistem akan menetapkan satu kamar yang benar-benar tersedia saat reservasi disimpan.` :
+                    'Pilih tipe kamar untuk memeriksa ketersediaan.'}
                 </div>
               </div>
 
@@ -508,7 +572,7 @@ export default function KontakBookingSection({
 
                 <button
                   type="submit"
-                  disabled={isKirimting}
+                  disabled={isKirimting || isCheckingAvailability || availableRoomCount === null || availableRoomCount < 1 || Boolean(availabilityError)}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold px-8 py-4 rounded shadow-md hover:shadow-lg transition-all disabled:opacity-50"
                 >
                   {isKirimting ? (

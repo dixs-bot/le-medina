@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AdminMetrics,
   Reservation,
@@ -64,6 +65,8 @@ export default function AdminDashboardClient({
   offers,
   currentUser,
 }: AdminDashboardClientProps) {
+  const router = useRouter();
+
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
     'overview' | 'reservations' | 'rooms' | 'rates' | 'menu' | 'settings'
@@ -209,6 +212,9 @@ export default function AdminDashboardClient({
         }.`,
       });
       await refreshDashboardMetrics();
+      // The room cards derive reserved/occupied status from live reservations.
+      // Refresh server data so check-in/check-out is reflected immediately in inventory.
+      router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal memperbarui status reservasi.';
       console.error('[admin/reservations] Status update failed:', message);
@@ -224,6 +230,7 @@ export default function AdminDashboardClient({
         const databaseStatus = checkPayload?.reservation?.status as ReservationStatus | undefined;
         if (checkResponse.ok && databaseStatus) {
           applyStatus(databaseStatus, checkPayload.reservation as Partial<Reservation>);
+          router.refresh();
         }
       } catch {
         // Keep the original request error visible below.
@@ -929,12 +936,25 @@ export default function AdminDashboardClient({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {rooms.map((room) => {
                   const roomType = roomTypes.find((rt) => rt.id === room.room_type_id);
+                  const operationalStatus = room.current_status || room.status;
+                  const statusLabel = operationalStatus === 'available' ? 'Tersedia'
+                    : operationalStatus === 'reserved' ? 'Reserved'
+                    : operationalStatus === 'occupied' ? 'Sudah Ditempati'
+                    : operationalStatus === 'maintenance' ? 'Pemeliharaan'
+                    : operationalStatus === 'blocked' ? 'Ditutup' : operationalStatus;
+                  const statusClass = operationalStatus === 'available'
+                    ? 'bg-status-success/10 text-status-success'
+                    : operationalStatus === 'occupied'
+                      ? 'bg-red-100 text-red-800'
+                      : operationalStatus === 'reserved'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-status-warning/10 text-status-warning';
                   return (
                     <div
                       key={room.id}
                       className="bg-ivory p-5 rounded-xl border border-bordercolor shadow-sm space-y-3"
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start gap-3">
                         <div>
                           <span className="text-xs font-mono uppercase tracking-wider text-mutedgray block">
                             Lantai {room.floor} • Sayap {room.wing}
@@ -943,28 +963,28 @@ export default function AdminDashboardClient({
                             {room.room_number}
                           </h3>
                         </div>
-                        <span
-                          className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold ${
-                            room.status === 'available'
-                              ? 'bg-status-success/10 text-status-success'
-                              : 'bg-status-warning/10 text-status-warning'
-                          }`}
-                        >
-                          {room.status === "available" ? "Tersedia" :
-                             room.status === "maintenance" ? "Pemeliharaan" :
-                             room.status === "blocked" ? "Ditutup" : room.status}
+                        <span className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold ${statusClass}`}>
+                          {statusLabel}
                         </span>
                       </div>
 
                       <div className="text-xs text-charcoal/80">
                         <span className="text-mutedgray block">Tipe Kamar:</span>
-                        <strong className="text-forest">{roomType?.name}</strong>
+                        <strong className="text-forest">{roomType?.name || 'Tipe lama / arsip reservasi'}</strong>
                       </div>
+
+                      {room.current_guest && operationalStatus !== 'available' && (
+                        <div className="rounded-md bg-ivory-200/70 border border-bordercolor p-3 text-xs">
+                          <p className="font-semibold text-forest">{room.current_guest}</p>
+                          {room.current_reservation_code && <p className="text-mutedgray mt-0.5">Kode: {room.current_reservation_code}</p>}
+                          {room.current_check_out && <p className="text-mutedgray mt-0.5">Rencana check-out: {room.current_check_out}</p>}
+                        </div>
+                      )}
 
                       <div className="text-xs text-mutedgray pt-2 border-t border-bordercolor flex justify-between">
                         <span>Tarif Dasar:</span>
                         <strong className="text-gold-700">
-                          {roomType ? formatPrice(roomType.base_price_cents / 100, 'IDR') : ''}/nt
+                          {roomType ? formatPrice(roomType.base_price_cents / 100, 'IDR') : '—'}/malam
                         </strong>
                       </div>
                     </div>

@@ -9,11 +9,15 @@ import RoomModal from './RoomModal';
 interface KamarCatalogProps {
   rooms: RoomType[];
   onSelectRoomForBooking: (room: RoomType) => void;
+  checkIn: string;
+  checkOut: string;
 }
 
 export default function KamarCatalog({
   rooms,
   onSelectRoomForBooking,
+  checkIn,
+  checkOut,
 }: KamarCatalogProps) {
   const [selectedRoom, setSelectedRoom] = useState<RoomType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +44,7 @@ export default function KamarCatalog({
               Pilihan Kamar
             </span>
             <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest">
-              Kamar & Suite Istimewa
+              Pilihan Kamar Hotel
             </h2>
           </div>
 
@@ -192,6 +196,8 @@ export default function KamarCatalog({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSelectForBooking={onSelectRoomForBooking}
+        checkIn={checkIn}
+        checkOut={checkOut}
       />
     </section>
   );

@@ -39,6 +39,18 @@ export default function PublicInteractiveWrapper({
   reviews,
   whatsappNumber,
 }: PublicInteractiveWrapperProps) {
+  const formatDateInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const [checkIn, setCheckIn] = useState(formatDateInput(today));
+  const [checkOut, setCheckOut] = useState(formatDateInput(tomorrow));
+
   const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(
     undefined
   );
@@ -67,6 +79,8 @@ export default function PublicInteractiveWrapper({
       <RoomsCatalog
         rooms={roomTypes}
         onSelectRoomForBooking={handleSelectRoomForBooking}
+        checkIn={checkIn}
+        checkOut={checkOut}
       />
 
       <RestaurantSection
@@ -88,6 +102,10 @@ export default function PublicInteractiveWrapper({
 
       <ContactBookingSection
         roomTypes={roomTypes}
+        checkIn={checkIn}
+        checkOut={checkOut}
+        onCheckInChange={setCheckIn}
+        onCheckOutChange={setCheckOut}
         preselectedRoomId={preselectedRoomId}
         appliedPromoCode={appliedPromoCode}
         whatsappNumber={whatsappNumber}

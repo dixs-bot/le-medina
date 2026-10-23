@@ -28,12 +28,11 @@ export const initialSitePengaturan: SitePengaturan = {
 export const initialRoomTypes: RoomType[] = [
   {
     id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    name: 'Sultana Royal Courtyard Suite',
-    slug: 'sultana-royal-suite',
-    tagline: 'Suite megah bernuansa elegan dengan teras pribadi menghadap pelataran hotel',
-    description:
-      'Suite mewah yang luas dengan sentuhan arsitektur khas berkelas, langit-langit kayu bernilai seni tinggi, kamar mandi marmer elegan, serta teras santai untuk menyegarkan suasana istirahat Anda di Singkawang.',
-    base_price_cents: 42000,
+    name: 'Standar',
+    slug: 'standar',
+    tagline: 'Kamar nyaman untuk kebutuhan menginap harian',
+    description: 'Kamar Standar dengan tarif tetap sesuai harga aktif hotel.',
+    base_price_cents: 15000000,
     currency: 'IDR',
     max_adults: 3,
     max_children: 1,
@@ -73,12 +72,11 @@ export const initialRoomTypes: RoomType[] = [
   },
   {
     id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    name: 'Majorelle Garden Deluxe',
-    slug: 'majorelle-garden-deluxe',
-    tagline: 'Kamar deluxe yang asri dan sejuk dengan pemandangan taman hijau yang menenangkan',
-    description:
-      'Menghadirkan suasana santai dan menyegarkan dengan pencahayaan alami, dekorasi interior berkelas, serta sudut bersantai yang menghadap langsung ke keasrian taman bunga hotel.',
-    base_price_cents: 31000,
+    name: 'Royale',
+    slug: 'royale',
+    tagline: 'Kamar Royale untuk pengalaman menginap yang nyaman',
+    description: 'Kamar Royale dengan tarif tetap sesuai harga aktif hotel.',
+    base_price_cents: 20000000,
     currency: 'IDR',
     max_adults: 2,
     max_children: 1,
@@ -117,12 +115,11 @@ export const initialRoomTypes: RoomType[] = [
   },
   {
     id: 'c3333333-cccc-cccc-cccc-cccccccccccc',
-    name: 'Atlas Panorama Rooftop Suite',
-    slug: 'atlas-panorama-rooftop-suite',
-    tagline: 'Kemewahan griya tawang di lantai atas dengan teras terbuka pemandangan cakrawala luas',
-    description:
-      'Terletak di lantai paling atas Hôtel Le Médina, suite istimewa ini memiliki pintu kaca lebar yang terhubung langsung ke balkon terbuka seluas 25 m². Nikmati pemandangan matahari terbenam atau minum teh sore di bawah kanopi yang teduh dan privat.',
-    base_price_cents: 55000,
+    name: 'Premium',
+    slug: 'premium',
+    tagline: 'Kamar Premium untuk pengalaman menginap istimewa',
+    description: 'Kamar Premium dengan tarif tetap sesuai harga aktif hotel.',
+    base_price_cents: 25000000,
     currency: 'IDR',
     max_adults: 2,
     max_children: 0,
@@ -161,7 +158,7 @@ export const initialRoomTypes: RoomType[] = [
   },
   {
     id: 'd4444444-dddd-dddd-dddd-dddddddddddd',
-    name: 'Riad Jasmine Heritage Room',
+    name: 'Tipe Lama (Arsip)',
     slug: 'riad-jasmine-heritage-room',
     tagline: 'Kamar bernuansa hangat dan romantis dengan sentuhan seni pengrajin lokal',
     description:
@@ -180,7 +177,7 @@ export const initialRoomTypes: RoomType[] = [
       'Pendingin Ruangan (AC) Sunyi Tanpa Bising',
       'Speaker Nirkabel Bluetooth Berkualitas',
     ],
-    is_active: true,
+    is_active: false,
     sort_order: 4,
     images: [
       {
@@ -196,35 +193,38 @@ export const initialRoomTypes: RoomType[] = [
 ];
 
 export const initialKamar: Room[] = [
-  { id: 'rm-101', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: 'Suite 101', floor: 1, wing: 'Sayap Pelataran', status: 'available' },
-  { id: 'rm-102', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: 'Suite 102', floor: 1, wing: 'Sayap Pelataran', status: 'available' },
-  { id: 'rm-201', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: 'Deluxe 201', floor: 2, wing: 'Sayap Taman', status: 'available' },
-  { id: 'rm-202', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: 'Deluxe 202', floor: 2, wing: 'Sayap Taman', status: 'available' },
-  { id: 'rm-301', room_type_id: 'c3333333-cccc-cccc-cccc-cccccccccccc', room_number: 'Atlas Penthouse 301', floor: 3, wing: 'Lantai Atas Panorama', status: 'available' },
-  { id: 'rm-105', room_type_id: 'd4444444-dddd-dddd-dddd-dddddddddddd', room_number: 'Room 105', floor: 1, wing: 'Pelataran Melati', status: 'available' },
-  { id: 'rm-106', room_type_id: 'd4444444-dddd-dddd-dddd-dddddddddddd', room_number: 'Room 106', floor: 1, wing: 'Pelataran Melati', status: 'available' },
+  { id: 'rm-101', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: '101', floor: 1, wing: 'Standar Wing', status: 'available' },
+  { id: 'rm-102', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: '102', floor: 1, wing: 'Standar Wing', status: 'available' },
+  { id: 'rm-103', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: '103', floor: 1, wing: 'Standar Wing', status: 'available' },
+  { id: 'rm-104', room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa', room_number: '104', floor: 1, wing: 'Standar Wing', status: 'available' },
+  { id: 'rm-201', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: '201', floor: 2, wing: 'Royale Wing', status: 'available' },
+  { id: 'rm-202', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: '202', floor: 2, wing: 'Royale Wing', status: 'available' },
+  { id: 'rm-203', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: '203', floor: 2, wing: 'Royale Wing', status: 'available' },
+  { id: 'rm-204', room_type_id: 'b2222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb', room_number: '204', floor: 2, wing: 'Royale Wing', status: 'available' },
+  { id: 'rm-301', room_type_id: 'c3333333-cccc-cccc-cccc-cccccccccccc', room_number: '301', floor: 3, wing: 'Premium Wing', status: 'available' },
+  { id: 'rm-302', room_type_id: 'c3333333-cccc-cccc-cccc-cccccccccccc', room_number: '302', floor: 3, wing: 'Premium Wing', status: 'available' },
 ];
 
 export const initialRoomTarif: RoomRate[] = [
   {
     id: 'rate-1',
     room_type_id: 'a1111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    rate_name: 'Musim Liburan Akhir Tahun',
+    rate_name: 'Musim Liburan Akhir Tahun (Nonaktif)',
     start_date: '2026-12-20',
     end_date: '2027-01-05',
     price_cents: 52000,
     min_stay_nights: 3,
-    is_active: true,
+    is_active: false,
   },
   {
     id: 'rate-2',
     room_type_id: 'c3333333-cccc-cccc-cccc-cccccccccccc',
-    rate_name: 'Musim Liburan Panorama',
+    rate_name: 'Musim Liburan Premium (Nonaktif)',
     start_date: '2026-11-01',
     end_date: '2026-12-31',
     price_cents: 65000,
     min_stay_nights: 2,
-    is_active: true,
+    is_active: false,
   },
 ];
 
@@ -247,7 +247,7 @@ export const initialReservasi: Reservation[] = [
     whatsapp_notified: true,
     internal_notes: 'VIP guest from London. Arrange welcome mint tea & fruit basket.',
     created_at: '2026-10-20T10:15:00Z',
-    assigned_room_number: 'Suite 101',
+    assigned_room_number: '101',
     room_type: initialRoomTypes[0],
   },
   {
@@ -268,7 +268,7 @@ export const initialReservasi: Reservation[] = [
     whatsapp_notified: false,
     internal_notes: 'Awaiting deposit verification.',
     created_at: '2026-10-21T14:40:00Z',
-    assigned_room_number: 'Deluxe 201',
+    assigned_room_number: '201',
     room_type: initialRoomTypes[1],
   },
   {
@@ -289,7 +289,7 @@ export const initialReservasi: Reservation[] = [
     whatsapp_notified: true,
     internal_notes: 'Atlas Suite booked for Starlight season.',
     created_at: '2026-10-22T08:00:00Z',
-    assigned_room_number: 'Atlas Penthouse 301',
+    assigned_room_number: '301',
     room_type: initialRoomTypes[2],
   },
 ];

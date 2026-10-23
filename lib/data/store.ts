@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import {
   RoomType,
   Room,
+  RoomAvailabilityDetail,
+  RoomOperationalStatus,
   RoomRate,
   Reservation,
   ReservationStatus,
@@ -381,11 +383,29 @@ export async function getRoomTypeById(id: string): Promise<RoomType | null> {
   return data ? mapRoomType(data) : null;
 }
 
-/** Inventaris fisik hanya boleh dibaca melalui server-side service-role client. */
+/** Inventaris fisik dan status operasional hari ini hanya dibaca melalui service-role client. */
 export async function getKamar(): Promise<Room[]> {
   if (!isSupabaseConfigured) {
     if (isProduction) throw new Error('Supabase belum dikonfigurasi untuk membaca inventaris kamar.');
-    return [...store.rooms];
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    return store.rooms.map((room) => {
+      const reservation = store.reservations.find((item) =>
+        item.assigned_room_number === room.room_number &&
+        ['pending', 'confirmed', 'checked_in'].includes(item.status) &&
+        (item.status === 'checked_in' || (item.check_in <= today && item.check_out > today))
+      );
+      const currentStatus: RoomOperationalStatus = room.status !== 'available'
+        ? room.status
+        : reservation?.status === 'checked_in' ? 'occupied'
+        : reservation ? 'reserved' : 'available';
+      return {
+        ...room,
+        current_status: currentStatus,
+        current_guest: reservation?.guest_name,
+        current_reservation_code: reservation?.reservation_code,
+        current_check_out: reservation?.check_out,
+      };
+    });
   }
 
   const db = requireAdminDb();
@@ -399,7 +419,73 @@ export async function getKamar(): Promise<Room[]> {
     throw new Error('Gagal membaca inventaris kamar dari database. Pastikan SUPABASE_SERVICE_ROLE_KEY valid.');
   }
 
-  return (data || []) as Room[];
+  let roomRows = (data || []) as Room[];
+  if (!roomRows.length) return [];
+
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  const roomIds = roomRows.map((room) => room.id);
+  const [activeTypesResult, reservationsResult] = await Promise.all([
+    db.from('room_types').select('id').eq('is_active', true),
+    db.from('reservations')
+      .select('id, reservation_code, guest_name, status, check_in, check_out')
+      .in('status', ['pending', 'confirmed', 'checked_in']),
+  ]);
+
+  if (activeTypesResult.error || reservationsResult.error) {
+    const sourceError = activeTypesResult.error || reservationsResult.error;
+    logDbError('Gagal membaca status operasional inventaris', sourceError);
+    throw new Error('Gagal membaca status reservasi pada inventaris kamar.');
+  }
+
+  const activeTypeIds = new Set((activeTypesResult.data || []).map((row: any) => row.id));
+  const reservationRows = (reservationsResult.data || []) as Array<{
+    id: string; reservation_code: string; guest_name: string; status: ReservationStatus;
+    check_in: string; check_out: string;
+  }>;
+  const reservationIds = reservationRows.map((row) => row.id);
+  const { data: itemRows, error: itemError } = reservationIds.length
+    ? await db.from('reservation_items').select('reservation_id, assigned_room_id').in('reservation_id', reservationIds).in('assigned_room_id', roomIds)
+    : { data: [], error: null } as any;
+
+  if (itemError) {
+    logDbError('Gagal membaca alokasi kamar aktif', itemError);
+    throw new Error('Gagal membaca alokasi kamar pada reservasi aktif.');
+  }
+
+  const reservationMap = new Map(reservationRows.map((row) => [row.id, row]));
+  const reservationsByRoom = new Map<string, typeof reservationRows>();
+  for (const item of itemRows || []) {
+    const reservation = reservationMap.get(item.reservation_id);
+    if (!reservation || !item.assigned_room_id) continue;
+    const list = reservationsByRoom.get(item.assigned_room_id) || [];
+    list.push(reservation);
+    reservationsByRoom.set(item.assigned_room_id, list);
+  }
+
+  // Do not show legacy demo rooms that have no active room type or live reservation.
+  // Their historical reservation records stay in the database and are not deleted.
+  roomRows = roomRows.filter((room) =>
+    activeTypeIds.has(room.room_type_id) || (reservationsByRoom.get(room.id)?.length || 0) > 0
+  );
+
+  return roomRows.map((room) => {
+    const liveReservations = (reservationsByRoom.get(room.id) || []).filter((reservation) =>
+      reservation.status === 'checked_in' ||
+      (reservation.check_in <= today && reservation.check_out > today)
+    );
+    const currentReservation = liveReservations.find((reservation) => reservation.status === 'checked_in') || liveReservations[0];
+    let currentStatus: RoomOperationalStatus = room.status;
+    if (room.status === 'available') {
+      currentStatus = currentReservation?.status === 'checked_in' ? 'occupied' : currentReservation ? 'reserved' : 'available';
+    }
+    return {
+      ...room,
+      current_status: currentStatus,
+      current_guest: currentReservation?.guest_name,
+      current_reservation_code: currentReservation?.reservation_code,
+      current_check_out: currentReservation?.check_out,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -584,6 +670,161 @@ export async function checkRoomAvailability(
   };
 }
 
+/**
+ * Returns public-safe physical room availability for a requested date range.
+ * It cross-checks active reservation date ranges and reservation-night rows so
+ * stale/missing occupancy rows cannot accidentally make a reserved room appear free.
+ */
+export async function getRoomAvailabilityDetails(
+  roomTypeId: string,
+  checkIn: string,
+  checkOut: string,
+): Promise<{ rooms: RoomAvailabilityDetail[]; availableKamarCount: number }> {
+  if (!isValidISODateString(checkIn) || !isValidISODateString(checkOut) || checkOut <= checkIn) {
+    throw new Error('Tanggal check-in/check-out tidak valid.');
+  }
+
+  if (!isSupabaseConfigured) {
+    if (isProduction) throw new Error('Supabase belum dikonfigurasi untuk memeriksa ketersediaan kamar.');
+    const requestedRooms = store.rooms.filter((room) => room.room_type_id === roomTypeId);
+    const rooms = requestedRooms.map((room) => {
+      const conflictingReservation = store.reservations.find((reservation) =>
+        reservation.assigned_room_number === room.room_number &&
+        ['pending', 'confirmed', 'checked_in'].includes(reservation.status) &&
+        reservation.check_in < checkOut && reservation.check_out > checkIn
+      );
+      let status: RoomOperationalStatus = room.status;
+      if (room.status === 'available' && conflictingReservation) {
+        status = conflictingReservation.status === 'checked_in' ? 'occupied' : 'reserved';
+      }
+      return {
+        room_id: room.id,
+        room_number: room.room_number,
+        floor: room.floor,
+        wing: room.wing,
+        status,
+        is_available: status === 'available',
+        note: status === 'available' ? 'Tersedia untuk tanggal pilihan.'
+          : status === 'reserved' ? 'Kamar ini sudah dipesan orang untuk tanggal yang dipilih.'
+          : status === 'occupied' ? 'Kamar ini sedang ditempati pada tanggal yang dipilih.'
+          : status === 'maintenance' ? 'Kamar sedang dalam perawatan.' : 'Kamar tidak tersedia untuk dipesan.',
+      } satisfies RoomAvailabilityDetail;
+    });
+    return { rooms, availableKamarCount: rooms.filter((room) => room.is_available).length };
+  }
+
+  const db = requireAdminDb();
+  const { data: roomRows, error: roomsError } = await db
+    .from('rooms')
+    .select('id, room_number, floor, wing, status')
+    .eq('room_type_id', roomTypeId)
+    .order('room_number', { ascending: true });
+  if (roomsError) {
+    logDbError('Gagal membaca kamar untuk pengecekan tanggal', roomsError);
+    throw new Error('Gagal membaca nomor kamar untuk tanggal yang dipilih.');
+  }
+
+  const inventory = roomRows || [];
+  if (!inventory.length) return { rooms: [], availableKamarCount: 0 };
+  const roomIds = inventory.map((room: any) => room.id);
+
+  // Direct reservation-item assignment provides the primary conflict check.
+  const { data: reservationRows, error: reservationError } = await db
+    .from('reservations')
+    .select('id, status, check_in, check_out')
+    .in('status', ['pending', 'confirmed', 'checked_in'])
+    .lt('check_in', checkOut)
+    .gt('check_out', checkIn);
+  if (reservationError) {
+    logDbError('Gagal membaca reservasi aktif untuk pengecekan kamar', reservationError);
+    throw new Error('Gagal memverifikasi reservasi pada tanggal yang dipilih.');
+  }
+
+  const reservations = reservationRows || [];
+  const reservationIds = reservations.map((reservation: any) => reservation.id);
+  const { data: itemRows, error: itemsError } = reservationIds.length
+    ? await db.from('reservation_items').select('reservation_id, assigned_room_id').in('reservation_id', reservationIds).in('assigned_room_id', roomIds)
+    : { data: [], error: null } as any;
+  if (itemsError) {
+    logDbError('Gagal membaca penugasan kamar aktif', itemsError);
+    throw new Error('Gagal membaca penugasan kamar untuk reservasi aktif.');
+  }
+
+  const activeReservationById = new Map(reservations.map((row: any) => [row.id, row]));
+  const reservedRoomIds = new Map<string, 'reserved' | 'occupied'>();
+  for (const item of itemRows || []) {
+    const reservation: any = activeReservationById.get(item.reservation_id);
+    if (!item.assigned_room_id || !reservation) continue;
+    const nextStatus = reservation.status === 'checked_in' ? 'occupied' : 'reserved';
+    const previous = reservedRoomIds.get(item.assigned_room_id);
+    if (nextStatus === 'occupied' || !previous) reservedRoomIds.set(item.assigned_room_id, nextStatus);
+  }
+
+  // Add conflict indication from room-night records too, including older records
+  // whose reservation item did not retain assigned_room_id correctly.
+  const { data: nightRows, error: nightsError } = await db
+    .from('reservation_nights')
+    .select('room_id, reservation_item_id')
+    .in('room_id', roomIds)
+    .gte('night_date', checkIn)
+    .lt('night_date', checkOut);
+  if (nightsError) {
+    logDbError('Gagal membaca malam reservasi kamar', nightsError);
+    throw new Error('Gagal memeriksa kalender ketersediaan kamar.');
+  }
+  const missingItemIds = Array.from(new Set((nightRows || []).map((row: any) => row.reservation_item_id)));
+  if (missingItemIds.length) {
+    const { data: nightItems, error: nightItemsError } = await db
+      .from('reservation_items').select('id, reservation_id').in('id', missingItemIds);
+    if (nightItemsError) {
+      logDbError('Gagal membaca detail malam reservasi', nightItemsError);
+      throw new Error('Gagal membaca detail kalender kamar.');
+    }
+    const nightReservationIds = Array.from(new Set((nightItems || []).map((row: any) => row.reservation_id)));
+    const alreadyLoadedIds = new Set(reservations.map((row: any) => row.id));
+    const additionalIds = nightReservationIds.filter((id: string) => !alreadyLoadedIds.has(id));
+    const { data: extraReservations, error: extraReservationsError } = additionalIds.length
+      ? await db.from('reservations').select('id, status').in('id', additionalIds)
+      : { data: [], error: null } as any;
+    if (extraReservationsError) {
+      logDbError('Gagal membaca status reservasi kalender', extraReservationsError);
+      throw new Error('Gagal memverifikasi status reservasi kamar.');
+    }
+    const allStatuses = new Map<string, string>([
+      ...reservations.map((row: any) => [row.id, row.status] as [string, string]),
+      ...(extraReservations || []).map((row: any) => [row.id, row.status] as [string, string]),
+    ]);
+    const reservationByItemId = new Map((nightItems || []).map((row: any) => [row.id, row.reservation_id]));
+    for (const night of nightRows || []) {
+      const reservationId = reservationByItemId.get(night.reservation_item_id);
+      const reservationStatus = reservationId ? allStatuses.get(reservationId) : undefined;
+      if (!reservationStatus || !['pending', 'confirmed', 'checked_in'].includes(reservationStatus)) continue;
+      const nextStatus = reservationStatus === 'checked_in' ? 'occupied' : 'reserved';
+      const previous = reservedRoomIds.get(night.room_id);
+      if (nextStatus === 'occupied' || !previous) reservedRoomIds.set(night.room_id, nextStatus);
+    }
+  }
+
+  const rooms: RoomAvailabilityDetail[] = inventory.map((room: any) => {
+    let status: RoomOperationalStatus = room.status as RoomOperationalStatus;
+    if (room.status === 'available') status = reservedRoomIds.get(room.id) || 'available';
+    const note = status === 'available' ? 'Tersedia untuk tanggal pilihan.'
+      : status === 'reserved' ? 'Kamar ini sudah dipesan orang untuk tanggal yang dipilih.'
+      : status === 'occupied' ? 'Kamar ini sedang ditempati pada tanggal yang dipilih.'
+      : status === 'maintenance' ? 'Kamar sedang dalam perawatan.' : 'Kamar tidak tersedia untuk dipesan.';
+    return {
+      room_id: room.id,
+      room_number: room.room_number,
+      floor: Number(room.floor || 1),
+      wing: String(room.wing || ''),
+      status,
+      is_available: status === 'available',
+      note,
+    };
+  });
+  return { rooms, availableKamarCount: rooms.filter((room) => room.is_available).length };
+}
+
 // ---------------------------------------------------------------------------
 // 5. Atomic reservation creation
 // ---------------------------------------------------------------------------
@@ -669,10 +910,23 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
     // A booking has already been committed at this point. Room details are
     // supplementary and must not trigger a fake/local booking fallback.
     let roomType: RoomType | undefined;
+    let assignedRoomNumber = 'Nomor kamar dapat dilihat pada detail reservasi';
     try {
       roomType = (await getRoomTypeById(room_type_id)) || undefined;
     } catch (lookupError) {
       console.error('[hotel-store] Reservation was saved but room type details could not be reloaded.');
+    }
+    if (typeof result.room_id === 'string') {
+      try {
+        const { data: assignedRoom, error: assignedRoomError } = await requireAdminDb()
+          .from('rooms')
+          .select('room_number')
+          .eq('id', result.room_id)
+          .maybeSingle();
+        if (!assignedRoomError && assignedRoom?.room_number) assignedRoomNumber = assignedRoom.room_number;
+      } catch {
+        // The atomic reservation succeeded already; a supplementary lookup must not undo it.
+      }
     }
 
     return {
@@ -695,7 +949,7 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       source: 'direct_web',
       whatsapp_notified: false,
       created_at: new Date().toISOString(),
-      assigned_room_number: 'Penetapan sesuai sistem reservasi',
+      assigned_room_number: assignedRoomNumber,
       room_type: roomType,
     };
   }
@@ -709,9 +963,10 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
     const roomType = await getRoomTypeById(room_type_id);
     if (!roomType) throw new Error('Tipe kamar yang dipilih tidak ditemukan.');
 
-    const availability = await checkRoomAvailability(room_type_id, check_in, check_out);
-    if (!availability.isTersedia) {
-      throw new Error('Mohon maaf, tidak ada kamar yang tersedia pada tanggal yang dipilih.');
+    const availability = await getRoomAvailabilityDetails(room_type_id, check_in, check_out);
+    const assignedRoom = availability.rooms.find((room) => room.is_available);
+    if (!assignedRoom) {
+      throw new Error('Mohon maaf, tidak ada kamar yang tersedia pada tanggal yang dipilih. Silakan pilih tipe kamar atau tanggal lain.');
     }
 
     const pricing = await calculateStayPricing(room_type_id, check_in, check_out, promo_code);
@@ -736,7 +991,7 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       source: 'direct_web',
       whatsapp_notified: false,
       created_at: new Date().toISOString(),
-      assigned_room_number: 'Penetapan saat check-in',
+      assigned_room_number: assignedRoom.room_number,
       room_type: roomType,
       internal_notes: promo_code ? `Dipesan dengan kode promo: ${promo_code}` : undefined,
     };

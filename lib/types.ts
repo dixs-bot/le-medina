@@ -45,13 +45,31 @@ export interface RoomType {
   images?: RoomImage[];
 }
 
+export type RoomOperationalStatus = 'available' | 'reserved' | 'occupied' | 'maintenance' | 'blocked';
+
 export interface Room {
   id: string;
   room_type_id: string;
   room_number: string;
   floor: number;
   wing: string;
+  /** Base inventory status managed by hotel staff. */
   status: 'available' | 'maintenance' | 'blocked';
+  /** Derived live status for today's operating date. */
+  current_status?: RoomOperationalStatus;
+  current_guest?: string;
+  current_reservation_code?: string;
+  current_check_out?: string;
+}
+
+export interface RoomAvailabilityDetail {
+  room_id: string;
+  room_number: string;
+  floor: number;
+  wing: string;
+  status: RoomOperationalStatus;
+  is_available: boolean;
+  note: string;
 }
 
 export interface RoomRate {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  checkRoomAvailability,
+  getRoomAvailabilityDetails,
   calculateStayPricing,
   getRoomTypeById,
 } from '../../../lib/data/store';
@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [availability, pricing] = await Promise.all([
-      checkRoomAvailability(roomTypeId, checkIn, checkOut),
+    const [roomDetails, pricing] = await Promise.all([
+      getRoomAvailabilityDetails(roomTypeId, checkIn, checkOut),
       calculateStayPricing(roomTypeId, checkIn, checkOut, promoCode),
     ]);
 
@@ -79,8 +79,9 @@ export async function GET(request: NextRequest) {
       roomTypeId,
       checkIn,
       checkOut,
-      isTersedia: availability.isTersedia,
-      availableKamarCount: availability.availableKamarCount,
+      isTersedia: roomDetails.availableKamarCount > 0,
+      availableKamarCount: roomDetails.availableKamarCount,
+      rooms: roomDetails.rooms,
       pricing,
     });
   } catch (error: any) {
