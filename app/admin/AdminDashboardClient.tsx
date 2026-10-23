@@ -40,6 +40,12 @@ import {
   Loader2,
   Users,
   LogOut,
+  Plus,
+  Pencil,
+  ImagePlus,
+  Save,
+  X,
+  Trash2,
 } from 'lucide-react';
 import { AdminUser } from '../../lib/auth';
 
@@ -56,6 +62,29 @@ interface AdminDashboardClientProps {
 }
 
 type RoomRateKind = 'seasonal' | 'weekend' | 'holiday' | 'custom';
+
+interface RestaurantMenuDraft {
+  name: string;
+  description: string;
+  priceIdr: string;
+  categoryName: string;
+  imageFile: File | null;
+  imagePreviewUrl: string;
+  existingImageUrl: string;
+  isVegetarian: boolean;
+  isVegan: boolean;
+  isGlutenFree: boolean;
+  isSignature: boolean;
+  isAvailable: boolean;
+}
+
+function createEmptyRestaurantMenuDraft(): RestaurantMenuDraft {
+  return {
+    name: '', description: '', priceIdr: '', categoryName: '', imageFile: null,
+    imagePreviewUrl: '', existingImageUrl: '', isVegetarian: false,
+    isVegan: false, isGlutenFree: false, isSignature: false, isAvailable: true,
+  };
+}
 
 interface RoomRateDraft {
   rate_name: string;
@@ -134,8 +163,16 @@ export default function AdminDashboardClient({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
 
-  // Menu items state
+  // Restaurant CMS data is refreshed from Supabase when the tab opens and after each mutation.
   const [menuItems, setMenuItems] = useState<RestaurantMenuItem[]>(initialMenuItems);
+  const [menuCategories, setMenuCategories] = useState<RestaurantCategory[]>(categories);
+  const [menuEditorOpen, setMenuEditorOpen] = useState(false);
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+  const [menuDraft, setMenuDraft] = useState<RestaurantMenuDraft>(createEmptyRestaurantMenuDraft);
+  const [menuSaving, setMenuSaving] = useState(false);
+  const [menuAvailabilityUpdatingId, setMenuAvailabilityUpdatingId] = useState<string | null>(null);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [menuMessage, setMenuMessage] = useState<string | null>(null);
 
   // Site settings state
   const [sitePengaturan, setSitePengaturan] = useState<SitePengaturan>(initialSitePengaturan);
@@ -576,13 +613,137 @@ export default function AdminDashboardClient({
     }
   };
 
-  // Toggle dish availability
-  const toggleMenuAvailability = (itemId: string) => {
-    setMenuItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, is_available: !item.is_available } : item
-      )
-    );
+  const reloadRestaurantMenu = useCallback(async () => {
+    setMenuError(null);
+    try {
+      const response = await fetch('/api/admin/restaurant-menu', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal membaca menu restoran dari Supabase.');
+      setMenuItems(Array.isArray(payload?.items) ? payload.items as RestaurantMenuItem[] : []);
+      setMenuCategories(Array.isArray(payload?.categories) ? payload.categories as RestaurantCategory[] : []);
+    } catch (error) {
+      setMenuError(error instanceof Error ? error.message : 'Gagal membaca menu restoran dari Supabase.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'menu') void reloadRestaurantMenu();
+  }, [activeTab, reloadRestaurantMenu]);
+
+  const openNewMenuEditor = () => {
+    setEditingMenuId(null);
+    setMenuDraft(createEmptyRestaurantMenuDraft());
+    setMenuError(null);
+    setMenuMessage(null);
+    setMenuEditorOpen(true);
+  };
+
+  const openEditMenuEditor = (item: RestaurantMenuItem) => {
+    const category = menuCategories.find((candidate) => candidate.id === item.category_id);
+    setEditingMenuId(item.id);
+    setMenuDraft({
+      name: item.name || '',
+      description: item.description || '',
+      priceIdr: String(Math.round(Number(item.price_cents || 0) / 100)),
+      categoryName: category?.name || '',
+      imageFile: null,
+      imagePreviewUrl: '',
+      existingImageUrl: item.image_url || '',
+      isVegetarian: Boolean(item.is_vegetarian),
+      isVegan: Boolean(item.is_vegan),
+      isGlutenFree: Boolean(item.is_gluten_free),
+      isSignature: Boolean(item.is_signature),
+      isAvailable: Boolean(item.is_available),
+    });
+    setMenuError(null);
+    setMenuMessage(null);
+    setMenuEditorOpen(true);
+  };
+
+  const toggleMenuAvailability = async (itemId: string) => {
+    const current = menuItems.find((item) => item.id === itemId);
+    if (!current || menuAvailabilityUpdatingId) return;
+    setMenuAvailabilityUpdatingId(itemId);
+    setMenuError(null);
+    setMenuMessage(null);
+    try {
+      const response = await fetch('/api/admin/restaurant-menu', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ id: itemId, is_available: !current.is_available }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || 'Status menu gagal disimpan.');
+      }
+      setMenuItems((previous) => previous.map((item) => item.id === itemId ? payload.item as RestaurantMenuItem : item));
+      setMenuMessage(`Status menu ${current.name} berhasil diperbarui di Supabase.`);
+    } catch (error) {
+      setMenuError(error instanceof Error ? error.message : 'Status menu gagal disimpan ke Supabase.');
+    } finally {
+      setMenuAvailabilityUpdatingId(null);
+    }
+  };
+
+  const handleSaveRestaurantMenu = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (menuSaving) return;
+    setMenuSaving(true);
+    setMenuError(null);
+    setMenuMessage(null);
+    try {
+      const form = new FormData();
+      form.set('name', menuDraft.name);
+      form.set('description', menuDraft.description);
+      form.set('price_idr', menuDraft.priceIdr);
+      form.set('category_name', menuDraft.categoryName);
+      form.set('existing_image_url', menuDraft.existingImageUrl);
+      form.set('is_vegetarian', String(menuDraft.isVegetarian));
+      form.set('is_vegan', String(menuDraft.isVegan));
+      form.set('is_gluten_free', String(menuDraft.isGlutenFree));
+      form.set('is_signature', String(menuDraft.isSignature));
+      form.set('is_available', String(menuDraft.isAvailable));
+      if (menuDraft.imageFile) form.set('image', menuDraft.imageFile);
+      if (editingMenuId) form.set('id', editingMenuId);
+
+      const response = await fetch('/api/admin/restaurant-menu', {
+        method: editingMenuId ? 'PATCH' : 'POST',
+        body: form,
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Menu gagal disimpan (HTTP ${response.status}).`);
+      }
+      const savedName = String(payload.item?.name || menuDraft.name);
+      setMenuMessage(`Menu ${savedName} berhasil disimpan ke Supabase.`);
+      setMenuEditorOpen(false);
+      setMenuDraft(createEmptyRestaurantMenuDraft());
+      await reloadRestaurantMenu();
+      router.refresh();
+    } catch (error) {
+      setMenuError(error instanceof Error ? error.message : 'Menu gagal disimpan ke Supabase.');
+    } finally {
+      setMenuSaving(false);
+    }
+  };
+
+  const handleDeleteRestaurantMenu = async (item: RestaurantMenuItem) => {
+    if (!window.confirm(`Hapus menu “${item.name}” dari Supabase?`)) return;
+    setMenuError(null);
+    setMenuMessage(null);
+    try {
+      const response = await fetch(`/api/admin/restaurant-menu?id=${encodeURIComponent(item.id)}`, {
+        method: 'DELETE', cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) throw new Error(payload?.error || 'Menu gagal dihapus.');
+      await reloadRestaurantMenu();
+      setMenuMessage(`Menu ${item.name} berhasil dihapus dari Supabase.`);
+    } catch (error) {
+      setMenuError(error instanceof Error ? error.message : 'Menu gagal dihapus dari Supabase.');
+    }
   };
 
   // Role permissions helpers
@@ -1601,73 +1762,141 @@ export default function AdminDashboardClient({
           {/* TAB 5: RESTAURANT MENU CMS */}
           {activeTab === 'menu' && (
             <div className="space-y-6 animate-fadeIn">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                    Restoran Le Medina CMS
-                  </h1>
+                  <h1 className="font-editorial text-3xl font-bold text-forest mb-1">Restoran Le Medina CMS</h1>
                   <p className="text-xs text-mutedgray">
-                    Pengelolaan menu hidangan, tombol status ketersediaan, dan kategori sajian restoran.
+                    Kelola menu asli restoran, harga Rupiah, kategori, foto produk, dan ketersediaan. Semua perubahan disimpan ke Supabase.
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => void reloadRestaurantMenu()} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-xs font-semibold text-forest">
+                    <RefreshCw className="h-3.5 w-3.5" /> Segarkan
+                  </button>
+                  <button type="button" disabled={!canManageContent || menuSaving} onClick={openNewMenuEditor} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                    <Plus className="h-4 w-4" /> Tambah Menu
+                  </button>
                 </div>
               </div>
 
-              <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-ivory-200/50 border-b border-bordercolor text-mutedgray uppercase tracking-wider text-[11px]">
-                    <tr>
-                      <th className="p-4">Nama Menu</th>
-                      <th className="p-4">Deskripsi</th>
-                      <th className="p-4">Harga</th>
-                      <th className="p-4">Kategori Makanan</th>
-                      <th className="p-4">Ketersediaan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-bordercolor">
-                    {menuItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-ivory-100/50">
-                        <td className="p-4">
-                          <strong className="text-forest text-sm font-editorial block">
-                            {item.name}
-                          </strong>
-                          {item.is_signature && (
-                            <span className="text-[10px] text-gold-600 font-bold uppercase">
-                              ★ Andalan Chef
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4 text-mutedgray max-w-xs">{item.description}</td>
-                        <td className="p-4 font-bold text-gold-700">
-                          {formatPrice(item.price_cents / 100, item.currency)}
-                        </td>
-                        <td className="p-4 space-x-1">
-                          {item.is_vegetarian && (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">
-                              Veg
-                            </span>
-                          )}
-                          {item.is_gluten_free && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px]">
-                              GF
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <button
-                            onClick={() => toggleMenuAvailability(item.id)}
-                            className={`px-3 py-1 rounded text-xs font-bold transition-all ${
-                              item.is_available
-                                ? 'bg-status-success text-white'
-                                : 'bg-gray-200 text-gray-600'
-                            }`}
-                          >
-                            {item.is_available ? 'Tersedia' : 'Habis'}
-                          </button>
-                        </td>
-                      </tr>
+              {menuError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{menuError}</div>}
+              {menuMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{menuMessage}</div>}
+
+              {menuEditorOpen && (
+                <form onSubmit={handleSaveRestaurantMenu} className="space-y-5 rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 border-b border-bordercolor pb-3">
+                    <div>
+                      <h2 className="font-editorial text-xl font-bold text-forest">{editingMenuId ? 'Edit Menu Restoran' : 'Tambah Menu Restoran'}</h2>
+                      <p className="mt-1 text-xs text-mutedgray">Foto disimpan ke Supabase Storage; menu, kategori, dan harga disimpan ke database.</p>
+                    </div>
+                    <button type="button" onClick={() => { setMenuEditorOpen(false); setMenuError(null); }} className="rounded-lg p-2 text-mutedgray hover:bg-ivory-100" aria-label="Tutup formulir"><X className="h-4 w-4" /></button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block text-xs font-semibold text-forest">Nama menu *
+                      <input required maxLength={120} value={menuDraft.name} onChange={(event) => setMenuDraft((draft) => ({ ...draft, name: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: Nasi Goreng Le Medina" />
+                    </label>
+                    <label className="block text-xs font-semibold text-forest">Kategori *
+                      <input required maxLength={80} list="restaurant-category-options" value={menuDraft.categoryName} onChange={(event) => setMenuDraft((draft) => ({ ...draft, categoryName: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: Makanan utama" />
+                      <datalist id="restaurant-category-options">{menuCategories.map((category) => <option key={category.id} value={category.name} />)}</datalist>
+                      <span className="mt-1 block font-normal text-mutedgray">Kategori baru akan dibuat otomatis bila belum ada.</span>
+                    </label>
+                    <label className="block text-xs font-semibold text-forest md:col-span-2">Deskripsi menu
+                      <textarea rows={3} maxLength={2000} value={menuDraft.description} onChange={(event) => setMenuDraft((draft) => ({ ...draft, description: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Bahan, porsi, atau informasi menu (opsional)" />
+                    </label>
+                    <label className="block text-xs font-semibold text-forest">Harga (Rupiah) *
+                      <input required type="number" min={1} max={20000000} step={500} value={menuDraft.priceIdr} onChange={(event) => setMenuDraft((draft) => ({ ...draft, priceIdr: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: 35000" />
+                    </label>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-forest">Foto produk (JPG, PNG, WebP, AVIF; maks. 4 MB)
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setMenuDraft((draft) => ({ ...draft, imageFile: file, imagePreviewUrl: file ? URL.createObjectURL(file) : '' }));
+                        }} className="mt-1.5 block w-full rounded-lg border border-bordercolor bg-white px-3 py-2 text-xs font-normal file:mr-3 file:rounded file:border-0 file:bg-ivory-200 file:px-3 file:py-1.5" />
+                      </label>
+                      {(menuDraft.imagePreviewUrl || menuDraft.existingImageUrl) ? (
+                        <div className="flex items-center gap-3">
+                          <img src={menuDraft.imagePreviewUrl || menuDraft.existingImageUrl} alt="Pratinjau foto menu" className="h-20 w-20 rounded-lg border border-bordercolor object-cover" />
+                          <span className="text-xs text-mutedgray">Pratinjau foto menu</span>
+                        </div>
+                      ) : (
+                        <div className="flex h-20 items-center gap-3 rounded-lg border border-dashed border-bordercolor bg-ivory-50 px-4 text-xs text-mutedgray"><ImagePlus className="h-6 w-6" /> Belum ada foto. Foto akan tampil di website setelah disimpan.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 border-t border-bordercolor pt-4">
+                    {([
+                      ['isVegetarian', 'Vegetarian'], ['isVegan', 'Vegan'], ['isGlutenFree', 'Bebas gluten'], ['isSignature', 'Menu andalan chef'], ['isAvailable', 'Tampilkan sebagai tersedia'],
+                    ] as [keyof Pick<RestaurantMenuDraft, 'isVegetarian' | 'isVegan' | 'isGlutenFree' | 'isSignature' | 'isAvailable'>, string][]).map(([key, label]) => (
+                      <label key={key} className="inline-flex items-center gap-2 text-xs text-forest">
+                        <input type="checkbox" checked={menuDraft[key]} onChange={(event) => setMenuDraft((draft) => ({ ...draft, [key]: event.target.checked }))} className="rounded border-bordercolor" />
+                        {label}
+                      </label>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button type="button" onClick={() => { setMenuEditorOpen(false); setMenuError(null); }} className="rounded-lg border border-bordercolor px-4 py-2.5 text-xs font-semibold text-forest">Batal</button>
+                    <button type="submit" disabled={!canManageContent || menuSaving} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-5 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                      {menuSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {menuSaving ? 'Menyimpan...' : 'Simpan Menu ke Supabase'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="overflow-hidden rounded-xl border border-bordercolor bg-ivory shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-bordercolor bg-ivory-200/50 px-5 py-4">
+                  <div>
+                    <h2 className="font-editorial text-lg font-bold text-forest">Daftar Menu Restoran</h2>
+                    <p className="mt-0.5 text-xs text-mutedgray">{menuItems.length} menu tersimpan di database.</p>
+                  </div>
+                </div>
+                {menuItems.length === 0 ? (
+                  <div className="px-6 py-14 text-center">
+                    <UtensilsCrossed className="mx-auto h-10 w-10 text-gold-600" />
+                    <h3 className="mt-3 font-editorial text-xl font-bold text-forest">Belum ada menu restoran</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-mutedgray">Menu contoh lama sudah dibersihkan. Pihak manajemen dapat menambahkan nama menu, kategori, harga, dan foto produk asli melalui tombol Tambah Menu.</p>
+                    <button type="button" disabled={!canManageContent} onClick={openNewMenuEditor} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory disabled:opacity-50"><Plus className="h-4 w-4" /> Tambah Menu Pertama</button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] text-left text-xs">
+                      <thead className="border-b border-bordercolor bg-white text-[11px] uppercase tracking-wider text-mutedgray">
+                        <tr>
+                          <th className="p-4">Menu & Foto</th><th className="p-4">Deskripsi</th><th className="p-4">Harga</th><th className="p-4">Kategori</th><th className="p-4">Ketersediaan</th><th className="p-4">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-bordercolor">
+                        {menuItems.map((item) => (
+                          <tr key={item.id} className="hover:bg-ivory-100/50">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                {item.image_url ? <img src={item.image_url} alt={item.name} className="h-14 w-14 rounded-lg border border-bordercolor object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-bordercolor bg-white text-mutedgray"><ImagePlus className="h-5 w-5" /></div>}
+                                <div><strong className="block max-w-[180px] font-editorial text-sm text-forest">{item.name}</strong>{item.is_signature && <span className="text-[10px] font-bold uppercase text-gold-600">★ Andalan Chef</span>}</div>
+                              </div>
+                            </td>
+                            <td className="max-w-xs p-4 text-mutedgray">{item.description || '—'}</td>
+                            <td className="whitespace-nowrap p-4 font-bold text-gold-700">{formatPrice(item.price_cents / 100, item.currency)}</td>
+                            <td className="p-4 text-forest">{menuCategories.find((category) => category.id === item.category_id)?.name || '—'}</td>
+                            <td className="p-4">
+                              <button type="button" disabled={!canManageContent || menuAvailabilityUpdatingId === item.id} onClick={() => void toggleMenuAvailability(item.id)} className={`rounded px-3 py-1 text-xs font-bold transition-all disabled:opacity-50 ${item.is_available ? 'bg-status-success text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                {menuAvailabilityUpdatingId === item.id ? 'Menyimpan...' : item.is_available ? 'Tersedia' : 'Habis'}
+                              </button>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <button type="button" disabled={!canManageContent} onClick={() => openEditMenuEditor(item)} className="inline-flex items-center gap-1 rounded-lg border border-bordercolor bg-white px-3 py-2 font-semibold text-forest disabled:opacity-50"><Pencil className="h-3.5 w-3.5" /> Edit</button>
+                                <button type="button" disabled={!canManageContent} onClick={() => void handleDeleteRestaurantMenu(item)} className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-2 font-semibold text-red-700 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Hapus</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

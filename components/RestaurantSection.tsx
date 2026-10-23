@@ -68,6 +68,15 @@ export default function RestaurantSection({
         </div>
 
         {/* Menu Items Grid */}
+        {filteredItems.length === 0 ? (
+          <div className="mb-16 rounded-xl border border-forest-800 bg-forest-900/50 px-6 py-12 text-center">
+            <Utensils className="mx-auto h-9 w-9 text-gold-400" />
+            <h3 className="mt-4 font-editorial text-2xl font-bold text-ivory">Menu restoran segera hadir</h3>
+            <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ivory-200/75">
+              Tim manajemen sedang memperbarui daftar hidangan, harga, dan foto produk asli. Silakan hubungi restoran untuk informasi menu terbaru.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           {filteredItems.map((item) => (
             <div
@@ -134,6 +143,7 @@ export default function RestaurantSection({
             </div>
           ))}
         </div>
+        )}
 
         {/* WhatsApp Reservation Box */}
         <div className="bg-gradient-to-r from-forest-900 to-forest-800 rounded-xl p-8 border border-gold/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
