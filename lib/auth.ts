@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Role } from './types';
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, supabaseAdmin, isSupabaseAdminConfigured, isSupabaseConfigured } from './supabaseClient';
 
 export interface AdminUser {
   id: string;
   email: string;
   name: string;
   role: Role;
+  avatarUrl?: string;
 }
 
 // In production, ADMIN_SECRET_KEY MUST be set in environment variables
@@ -129,6 +130,7 @@ export function verifySessionToken(token: string): AdminUser | null {
       email: data.email,
       name: data.name,
       role: data.role as Role,
+      avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : undefined,
     };
   } catch {
     return null;
@@ -168,9 +170,39 @@ export async function getAuthenticatedAdmin(
     return null;
   }
 
-  // First try verifying internal signed session token
+  // Verify the signed session, then re-check the live database role and active flag.
+  // This allows the owner to deactivate a staff account without waiting for its cookie to expire.
   const internalUser = verifySessionToken(token);
   if (internalUser) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(internalUser.id);
+    if (isUuid && isSupabaseAdminConfigured && supabaseAdmin) {
+      try {
+        const { data: profile, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('id,auth_user_id,full_name,email,avatar_url,is_active')
+          .eq('auth_user_id', internalUser.id)
+          .maybeSingle();
+        if (profileError || !profile || profile.is_active === false) return null;
+
+        const { data: assignedRoles, error: rolesError } = await supabaseAdmin
+          .from('user_roles').select('role').eq('user_id', profile.id);
+        if (rolesError || !assignedRoles?.length) return null;
+        const rolePriority: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+        const liveRole = rolePriority.find((role) => assignedRoles.some((record) => record.role === role));
+        if (!liveRole) return null;
+        return {
+          ...internalUser,
+          email: profile.email || internalUser.email,
+          name: profile.full_name || internalUser.name,
+          role: liveRole,
+          avatarUrl: profile.avatar_url || undefined,
+        };
+      } catch {
+        return null;
+      }
+    }
+    // In production, a real Supabase UUID session must fail closed if live account checks are unavailable.
+    if (process.env.NODE_ENV === 'production' && isUuid) return null;
     return internalUser;
   }
 

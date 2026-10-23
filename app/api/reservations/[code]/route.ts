@@ -7,6 +7,7 @@ import { ReservationStatus } from '../../../../lib/types';
 import { requireAdminAuth, getAuthenticatedAdmin } from '../../../../lib/auth';
 import { checkRateLimit } from '../../../../lib/rateLimit';
 import { sanitizeString } from '../../../../lib/validation';
+import { writeAdminAudit } from '../../../../lib/adminAudit';
 
 export async function GET(
   request: NextRequest,
@@ -125,6 +126,14 @@ export async function PATCH(
       status || reservation.status,
       cleanNotes
     );
+    if (status && status !== reservation.status) {
+      await writeAdminAudit(request, authResult.user, 'reservation_status_updated', 'reservation', reservation.reservation_code, {
+        previous_status: reservation.status,
+        new_status: updated.status,
+        assigned_room_number: updated.assigned_room_number || reservation.assigned_room_number || null,
+        internal_notes_changed: cleanNotes !== undefined,
+      });
+    }
 
     return NextResponse.json({
       success: true,

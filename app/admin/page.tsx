@@ -13,13 +13,28 @@ import {
   getOffers,
 } from '../../lib/data/store';
 import AdminDashboardClient from './AdminDashboardClient';
+import { isSupabaseAdminConfigured, supabaseAdmin } from '../../lib/supabaseClient';
+import type { AdminUser } from '../../lib/auth';
 
 export const revalidate = 0;
 
 export default async function AdminPage() {
   const cookieStore = cookies();
   const sessionToken = cookieStore.get('admin_session')?.value;
-  const user = sessionToken ? verifySessionToken(sessionToken) : null;
+  let user: AdminUser | null = sessionToken ? verifySessionToken(sessionToken) : null;
+
+  // Resolve the live profile before rendering the admin panel. Disabled accounts cannot keep using an old cookie.
+  if (user && isSupabaseAdminConfigured && supabaseAdmin && /^[0-9a-f-]{36}$/i.test(user.id)) {
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles').select('full_name,email,avatar_url,is_active').eq('auth_user_id', user.id).maybeSingle();
+    if (profileError || !profile || profile.is_active === false) {
+      user = null;
+    } else {
+      user = { ...user, name: profile.full_name || user.name, email: profile.email || user.email, avatarUrl: profile.avatar_url || undefined };
+    }
+  } else if (user && process.env.NODE_ENV === 'production' && /^[0-9a-f-]{36}$/i.test(user.id)) {
+    user = null;
+  }
 
   // If unauthenticated, show server-guarded login screen
   if (!user) {

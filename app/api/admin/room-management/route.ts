@@ -3,6 +3,8 @@ import { requireAdminAuth } from '../../../../lib/auth';
 import { isSupabaseAdminConfigured, isSupabaseConfigured, supabaseAdmin } from '../../../../lib/supabaseClient';
 import { isValidISODate, sanitizeString } from '../../../../lib/validation';
 import { getAllRoomTypesAdmin, getKamar } from '../../../../lib/data/store';
+import { writeAdminAudit } from '../../../../lib/adminAudit';
+import type { AdminUser } from '../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,7 +46,7 @@ function priorityFor(kind: RateKind): number {
   }
 }
 
-async function updateRate(body: Record<string, unknown>) {
+async function updateRate(body: Record<string, unknown>, request: NextRequest, actor: AdminUser) {
   const id = sanitizeString(body.id, 64);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     return NextResponse.json({ error: 'ID aturan tarif tidak valid.' }, { status: 400 });
@@ -87,6 +89,9 @@ async function updateRate(body: Record<string, unknown>) {
     console.error('[admin/room-management] rate update failed:', error.code || 'unknown', error.message || 'Database request failed');
     return NextResponse.json({ error: 'Gagal memperbarui aturan harga di Supabase.' }, { status: 500 });
   }
+  await writeAdminAudit(request, actor, 'room_rate_updated', 'room_rate', id, {
+    rate_name: rateName, rate_type: rateKind, price_idr: price, is_active: isActive,
+  });
   return NextResponse.json({ success: true, rate: data });
 }
 
@@ -166,6 +171,7 @@ export async function POST(request: NextRequest) {
         if (error.code === '23505') return NextResponse.json({ error: `Nomor kamar ${roomNumber} sudah terdaftar.` }, { status: 409 });
         throw error;
       }
+      await writeAdminAudit(request, authResult.user, 'room_created', 'room', data.id, { room_number: data.room_number, room_type_id: data.room_type_id, floor: data.floor, wing: data.wing });
       return NextResponse.json({ success: true, room: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     }
 
@@ -181,6 +187,7 @@ export async function POST(request: NextRequest) {
         .select('id,name,base_price_cents,currency')
         .single();
       if (error) throw error;
+      await writeAdminAudit(request, authResult.user, 'room_base_price_updated', 'room_type', data.id, { room_type_name: data.name, price_idr: price });
       return NextResponse.json({ success: true, roomType: data });
     }
 
@@ -222,10 +229,11 @@ export async function POST(request: NextRequest) {
         })
         .select('*').single();
       if (error) throw error;
+      await writeAdminAudit(request, authResult.user, 'room_rate_created', 'room_rate', data.id, { rate_name: rateName, rate_type: rateKind, price_idr: price, room_type_id: roomTypeId });
       return NextResponse.json({ success: true, rate: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    if (action === 'update_rate') return await updateRate(body);
+    if (action === 'update_rate') return await updateRate(body, request, authResult.user);
 
     return NextResponse.json({ error: 'Aksi manajemen tidak dikenal.' }, { status: 400 });
   } catch (error) {

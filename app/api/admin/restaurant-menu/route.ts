@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '../../../../lib/auth';
+import { writeAdminAudit } from '../../../../lib/adminAudit';
 import { isSupabaseAdminConfigured, isSupabaseConfigured, supabaseAdmin } from '../../../../lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
@@ -170,6 +171,7 @@ export async function POST(request: NextRequest) {
       console.error('[admin/restaurant-menu] create failed:', error?.code || 'unknown', error?.message || 'Database request failed');
       throw new Error('Menu gagal disimpan ke Supabase. Periksa izin tabel restaurant_menu.');
     }
+    await writeAdminAudit(request, auth.user, 'restaurant_menu_created', 'restaurant_menu', data.id, { name: data.name, price_cents: data.price_cents, category: category.name });
     return NextResponse.json({ success: true, item: data, category }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Gagal menyimpan menu restoran.';
@@ -201,6 +203,7 @@ export async function PATCH(request: NextRequest) {
         console.error('[admin/restaurant-menu] availability update failed:', error?.message || 'Menu not found');
         return NextResponse.json({ error: 'Status ketersediaan menu gagal diperbarui.' }, { status: 500 });
       }
+      await writeAdminAudit(request, auth.user, 'restaurant_menu_updated', 'restaurant_menu', data.id, { name: data.name, is_available: data.is_available });
       return NextResponse.json({ success: true, item: data });
     }
 
@@ -227,6 +230,7 @@ export async function PATCH(request: NextRequest) {
       console.error('[admin/restaurant-menu] update failed:', error?.code || 'unknown', error?.message || 'Menu not found');
       throw new Error('Perubahan menu gagal disimpan ke Supabase.');
     }
+    await writeAdminAudit(request, auth.user, 'restaurant_menu_updated', 'restaurant_menu', data.id, { name: data.name, price_cents: data.price_cents, category: category.name });
     return NextResponse.json({ success: true, item: data, category });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Gagal memperbarui menu restoran.';
@@ -258,5 +262,6 @@ export async function DELETE(request: NextRequest) {
   if (!countError && count === 0) {
     await supabaseAdmin.from('restaurant_categories').update({ is_active: false }).eq('id', existing.category_id);
   }
+  await writeAdminAudit(request, auth.user, 'restaurant_menu_deleted', 'restaurant_menu', id, { category_id: existing.category_id });
   return NextResponse.json({ success: true });
 }

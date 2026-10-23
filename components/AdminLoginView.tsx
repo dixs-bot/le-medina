@@ -4,13 +4,12 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, Mail, ArrowLeft, KeyRound, AlertCircle, Sparkles } from 'lucide-react';
-import { Role } from '../lib/types';
 
 export default function AdminLoginView() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@lemedina.id');
-  const [password, setPassword] = useState('MedinaAdmin2026!');
-  const [requestedRole, setRequestedRole] = useState<Role>('super_admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [shiftName, setShiftName] = useState<'pagi' | 'siang' | 'malam'>('pagi');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -26,7 +25,7 @@ export default function AdminLoginView() {
         body: JSON.stringify({
           email,
           password,
-          requestedRole,
+          shift_name: shiftName,
         }),
       });
 
@@ -104,7 +103,7 @@ export default function AdminLoginView() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@lemedina.id"
+                  placeholder="email staf terdaftar"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-bordercolor bg-white text-xs text-charcoal focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold transition-all"
                 />
               </div>
@@ -129,20 +128,19 @@ export default function AdminLoginView() {
 
             <div>
               <label className="block text-xs uppercase tracking-wider font-semibold text-forest mb-1.5">
-                Peran Akses (RBAC Persona)
+                Sif yang Mulai Dijaga
               </label>
               <select
-                value={requestedRole}
-                onChange={(e) => setRequestedRole(e.target.value as Role)}
+                value={shiftName}
+                onChange={(e) => setShiftName(e.target.value as 'pagi' | 'siang' | 'malam')}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-bordercolor bg-white text-xs text-charcoal focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold transition-all"
               >
-                <option value="super_admin">Super Administrator (Semua Izin Penuh)</option>
-                <option value="admin">Administrator Operasional</option>
-                <option value="reservation_staff">Staf Reservasi & Meja Depan</option>
-                <option value="content_editor">Editor Konten & Restoran</option>
+                <option value="pagi">Sif Pagi</option>
+                <option value="siang">Sif Siang</option>
+                <option value="malam">Sif Malam</option>
               </select>
               <p className="text-[10px] text-mutedgray mt-1">
-                Kredensial demo: <code>admin@lemedina.id</code> / <code>MedinaAdmin2026!</code>
+                Sif dicatat bersama waktu login. Gunakan akun masing-masing; jangan berbagi kata sandi antarpetugas.
               </p>
             </div>
 

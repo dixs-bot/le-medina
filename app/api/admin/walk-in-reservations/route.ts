@@ -136,6 +136,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database tidak mengonfirmasi penyimpanan tamu offline.' }, { status: 500 });
     }
 
+    await writeAdminAudit(request, authResult.user, 'walk_in_reservation_created', 'reservation', String((data as any).reservation_code || (data as any).reservation_id || ''), {
+      guest_name: guestName,
+      room_id: roomId,
+      check_in: checkIn,
+      check_out: checkOut,
+      guest_count: guestCount,
+      payment_method: paymentMethod,
+      payment_status: paymentStatus,
+      checked_in_now: checkInNow,
+    });
     return NextResponse.json({ success: true, reservation: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[admin/walk-in-reservations] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');

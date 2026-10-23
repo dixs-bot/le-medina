@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '../../../../../lib/auth';
+import { writeAdminAudit } from '../../../../../lib/adminAudit';
 import {
   supabaseAdmin,
   isSupabaseConfigured,
@@ -52,6 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database tidak mengonfirmasi pencatatan pembayaran.' }, { status: 500 });
     }
 
+    await writeAdminAudit(request, authResult.user, 'offline_payment_received', 'reservation', reservationCode, {
+      receipt_reference: receiptReference || null,
+      notes_present: Boolean(notes),
+    });
     return NextResponse.json({ success: true, payment: data });
   } catch (error) {
     console.error('[admin/payments/receive] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');

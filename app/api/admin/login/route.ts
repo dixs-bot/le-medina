@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-import {
-  signSessionToken,
-  AdminUser,
-} from '../../../../lib/auth';
-
-import { Role } from '../../../../lib/types';
+import { signSessionToken } from '../../../../lib/auth';
+import type { AdminUser } from '../../../../lib/auth';
+import type { Role } from '../../../../lib/types';
+import { writeAdminAudit } from '../../../../lib/adminAudit';
 
 import {
   supabaseAdmin,
@@ -94,6 +92,8 @@ export async function POST(request: NextRequest) {
       typeof body.password === 'string'
         ? body.password
         : '';
+    const requestedShift = typeof body.shift_name === 'string' ? body.shift_name.trim().toLowerCase() : 'pagi';
+    const shiftName = ['pagi', 'siang', 'malam'].includes(requestedShift) ? requestedShift : 'pagi';
 
     if (!email || !password) {
       return NextResponse.json(
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
             error: profileError,
           } = await supabaseAdmin
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, avatar_url, is_active')
             .eq('auth_user_id', authData.user.id)
             .maybeSingle();
 
@@ -212,6 +212,9 @@ export async function POST(request: NextRequest) {
             console.warn(
               '[admin/login] Authenticated user has no linked profile.'
             );
+          } else if (profile.is_active === false) {
+            accountMissingRole = true;
+            console.warn('[admin/login] Login rejected for a disabled admin account.');
           } else {
             // --------------------------------------------
             // 5. Cari seluruh role dari profil tersebut
@@ -266,6 +269,7 @@ export async function POST(request: NextRequest) {
                     'Admin Le Médina',
 
                   role: selectedRole,
+                  avatarUrl: profile.avatar_url || undefined,
                 };
               } else {
                 accountMissingRole = true;
@@ -382,6 +386,7 @@ export async function POST(request: NextRequest) {
      * proses diteruskan ke error handler di bawah.
      */
     const token = signSessionToken(adminUser, 86400);
+    await writeAdminAudit(request, adminUser, 'login', 'session', adminUser.id, { shift_name: shiftName, auth_method: 'supabase_auth' });
 
     // Token hanya ditempatkan di cookie HttpOnly.
     // Jangan kirim token sesi di response JSON.
@@ -394,6 +399,7 @@ export async function POST(request: NextRequest) {
           email: adminUser.email,
           name: adminUser.name,
           role: adminUser.role,
+          avatarUrl: adminUser.avatarUrl || null,
         },
       },
       { status: 200 }
