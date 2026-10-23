@@ -1,120 +1,181 @@
 'use client';
 
-import React from 'react';
-import { MapPin, Navigation, Car, Compass, Clock, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Navigation, LocateFixed, ExternalLink } from 'lucide-react';
+
+const HOTEL_LATITUDE = 0.8922778;
+const HOTEL_LONGITUDE = 108.9696696;
+const HOTEL_NAME = 'Hôtel Le Médina & Resto';
+
+function calculateDistanceKm(
+  fromLatitude: number,
+  fromLongitude: number,
+  toLatitude: number,
+  toLongitude: number,
+): number {
+  const toRadians = (degree: number) => (degree * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const latitudeDifference = toRadians(toLatitude - fromLatitude);
+  const longitudeDifference = toRadians(toLongitude - fromLongitude);
+  const a =
+    Math.sin(latitudeDifference / 2) ** 2 +
+    Math.cos(toRadians(fromLatitude)) *
+      Math.cos(toRadians(toLatitude)) *
+      Math.sin(longitudeDifference / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function LokasiSection() {
-  const landmarks = [
-    { name: 'Pusat Kota Singkawang', distance: 'Informasi jarak perlu dikonfirmasi', time: 'Hubungi hotel' },
-    { name: 'Tempat wisata sekitar', distance: 'Informasi jarak perlu dikonfirmasi', time: 'Hubungi hotel' },
-    { name: 'Akses transportasi', distance: 'Informasi jarak perlu dikonfirmasi', time: 'Hubungi hotel' },
-  ];
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [deviceCoordinates, setDeviceCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const handleCheckDistance = () => {
+    setLocationError(null);
+
+    if (!('geolocation' in navigator)) {
+      setLocationError('Perangkat atau browser ini tidak mendukung fitur lokasi.');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const distance = calculateDistanceKm(
+          latitude,
+          longitude,
+          HOTEL_LATITUDE,
+          HOTEL_LONGITUDE,
+        );
+
+        setDeviceCoordinates({ latitude, longitude });
+        setDistanceKm(distance);
+        setLocationError(null);
+        setIsLocating(false);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationError(
+            'Izin lokasi belum diberikan. Aktifkan akses lokasi di browser untuk menghitung jarak.',
+          );
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setLocationError('Lokasi perangkat belum tersedia. Coba lagi di area dengan sinyal yang lebih baik.');
+        } else {
+          setLocationError('Permintaan lokasi terlalu lama. Silakan coba lagi.');
+        }
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    );
+  };
+
+  const navigationUrl = new URL('https://www.google.com/maps/dir/');
+  navigationUrl.searchParams.set('api', '1');
+  navigationUrl.searchParams.set('destination', `${HOTEL_LATITUDE},${HOTEL_LONGITUDE}`);
+  navigationUrl.searchParams.set('travelmode', 'driving');
+  if (deviceCoordinates) {
+    navigationUrl.searchParams.set(
+      'origin',
+      `${deviceCoordinates.latitude},${deviceCoordinates.longitude}`,
+    );
+  }
 
   return (
-    <section id="location" className="py-24 bg-ivory text-charcoal relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-gold-600 text-xs uppercase tracking-[0.25em] font-semibold block mb-2">
+    <section id="location" className="relative bg-ivory py-20 text-charcoal sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-10 max-w-3xl text-center sm:mb-12">
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-gold-600">
             Informasi Lokasi
           </span>
-          <h2 className="font-editorial text-3xl sm:text-5xl font-bold text-forest leading-tight mb-4">
-            Temukan Lokasi Hotel Kami
+          <h2 className="mb-4 font-editorial text-3xl font-bold leading-tight text-forest sm:text-5xl">
+            Temukan Hôtel Le Médina
           </h2>
-          <div className="w-16 h-0.5 bg-gold mx-auto mb-6" />
-          <p className="text-mutedgray text-sm sm:text-base leading-relaxed">
-            Berlokasi di Singkawang, Kalimantan Barat. Silakan hubungi pihak hotel untuk petunjuk arah dan informasi akses terbaru.
+          <div className="mx-auto mb-5 h-0.5 w-16 bg-gold" />
+          <p className="text-sm leading-relaxed text-mutedgray sm:text-base">
+            Lihat lokasi hotel langsung di peta dan buka navigasi untuk mendapatkan petunjuk arah ke hotel.
           </p>
         </div>
 
-        {/* 2-Column Lokasi & Map Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          {/* Left: Address, Kedatangan Guide & Distances (5 Cols) */}
-          <div className="lg:col-span-5 bg-forest text-ivory p-8 sm:p-10 rounded-xl shadow-luxury-lg border border-gold/30 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-gold-400 text-xs font-semibold uppercase tracking-widest mb-3">
-                <MapPin className="w-4 h-4" /> Alamat
-              </div>
-              <h3 className="font-editorial text-2xl font-bold text-ivory mb-2">
-                Hôtel Le Médina & Resto
-              </h3>
-              <p className="text-sm text-ivory-200/90 leading-relaxed mb-6 font-light">
-                <br />
-                Singkawang, Kalimantan Barat, Indonesia
-              </p>
-
-              {/* Coordinates */}
-              <div className="bg-forest-900/90 p-3.5 rounded border border-forest-800 text-xs text-gold-300 font-mono mb-8 flex items-center justify-between">
-                <span>Kalimantan Barat, Indonesia</span>
-                <span className="text-[10px] text-ivory-400 uppercase tracking-wider">Singkawang</span>
-              </div>
-
-              {/* Proximity Distances */}
-              <h4 className="text-xs uppercase tracking-widest text-gold-400 font-semibold mb-4 border-b border-forest-800 pb-2">
-                Tempat di Sekitar
-              </h4>
-              <div className="space-y-3 text-xs mb-8">
-                {landmarks.map((l, i) => (
-                  <div key={i} className="flex justify-between items-center text-ivory-200">
-                    <span className="font-medium text-ivory">{l.name}</span>
-                    <span className="text-gold-300 font-mono">{l.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Airport Transfer Note */}
-            <div className="pt-4 border-t border-forest-800 text-xs text-ivory-300">
-              <div className="flex items-center gap-2 text-gold font-semibold mb-1">
-                <Car className="w-4 h-4" /> Layanan Penjemputan Tamu
-              </div>
-              <p className="text-[11px] leading-relaxed">
-                Tersedia fasilitas layanan antar-jemput dan bantuan penanganan bagasi oleh staf hotel kami untuk memastikan perjalanan kedatangan Anda berlangsung lancar dan nyaman.
-              </p>
-            </div>
+        <div className="overflow-hidden rounded-2xl border border-bordercolor bg-white shadow-luxury-lg">
+          <div className="relative h-[360px] w-full bg-ivory-100 sm:h-[480px] lg:h-[560px]">
+            <iframe
+              title={`Peta lokasi ${HOTEL_NAME}, Singkawang`}
+              src={`https://maps.google.com/maps?q=${HOTEL_LATITUDE}%2C${HOTEL_LONGITUDE}&z=16&output=embed`}
+              className="absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
 
-          {/* Right: Interactive Styled Map View (7 Cols) */}
-          <div className="lg:col-span-7 bg-ivory-100 rounded-xl overflow-hidden border border-bordercolor shadow-luxury flex flex-col justify-between min-h-[420px] relative">
-            {/* Visual Medina Map Canvas */}
-            <div className="relative flex-1 w-full min-h-[340px] bg-forest-950 overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1509233725247-49e657c54213?auto=format&fit=crop&w=1400&q=80"
-                alt="Singkawang Medina Map Landscape"
-                className="w-full h-full object-cover opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-forest-950/90 via-forest-950/40 to-transparent" />
-
-              {/* Map Marker Pin Card */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-ivory p-5 rounded-lg shadow-2xl border-2 border-gold text-charcoal text-center max-w-xs animate-bounce-subtle">
-                <div className="w-8 h-8 rounded-full bg-forest text-gold flex items-center justify-center mx-auto mb-2 shadow">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <h4 className="font-editorial text-sm font-bold text-forest">Hôtel Le Médina</h4>
-                <p className="text-[11px] text-mutedgray mt-0.5">Pusat Kota Singkawang, Kalimantan Barat</p>
-                <span className="inline-block mt-2 text-[10px] bg-forest-50 text-status-success font-semibold px-2 py-0.5 rounded border border-forest-100">
-                  Kawasan Asri & Tenang
-                </span>
+          <div className="flex flex-col gap-5 border-t border-bordercolor bg-ivory p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-2 text-forest">
+                <MapPin className="h-5 w-5 shrink-0 text-gold-600" />
+                <h3 className="font-editorial text-lg font-bold sm:text-xl">{HOTEL_NAME}</h3>
               </div>
+              <p className="text-xs text-mutedgray sm:text-sm">
+                Singkawang, Kalimantan Barat, Indonesia
+              </p>
+              {distanceKm !== null ? (
+                <p className="mt-3 text-sm font-semibold text-forest" aria-live="polite">
+                  Perkiraan jarak garis lurus dari lokasi Anda: {' '}
+                  <span className="text-gold-600">
+                    {distanceKm.toLocaleString('id-ID', {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })}{' '}
+                    km
+                  </span>
+                  <span className="mt-1 block text-xs font-normal text-mutedgray">
+                    Jarak perjalanan di jalan dapat berbeda. Google Maps akan menghitung rute perjalanan.
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-mutedgray">
+                  Izinkan akses lokasi perangkat untuk melihat perkiraan jarak ke hotel.
+                </p>
+              )}
+              {locationError && (
+                <p className="mt-2 max-w-xl text-xs text-red-700" role="alert">
+                  {locationError}
+                </p>
+              )}
             </div>
 
-            {/* Bottom Actions Bar */}
-            <div className="p-4 sm:p-5 bg-ivory flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-bordercolor">
-              <span className="text-xs text-mutedgray">
-                Butuh bantuan petunjuk arah kedatangan? Staf kami siap membantu Anda 24/7 melalui WhatsApp.
-              </span>
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:shrink-0">
+              <button
+                type="button"
+                onClick={handleCheckDistance}
+                disabled={isLocating}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-forest bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-forest transition hover:bg-forest-50 disabled:cursor-wait disabled:opacity-60 sm:text-sm"
+              >
+                <LocateFixed className="h-4 w-4" />
+                {isLocating ? 'Mencari lokasi…' : 'Cek jarak saya'}
+              </button>
               <a
-                href="https://maps.google.com/?q=Singkawang+Medina"
+                href={navigationUrl.toString()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest px-4 py-2.5 rounded font-medium transition-all shadow-sm"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-forest px-5 py-3 text-xs font-semibold uppercase tracking-wider text-ivory shadow-sm transition hover:bg-forest-900 sm:text-sm"
               >
-                <span>Buka di Google Maps</span>
-                <ExternalLink className="w-3.5 h-3.5 text-gold" />
+                <Navigation className="h-4 w-4 text-gold" />
+                Navigasi ke Hotel
+                <ExternalLink className="h-3.5 w-3.5 text-gold" />
               </a>
             </div>
           </div>
         </div>
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-mutedgray">
+          Koordinat hotel: {HOTEL_LATITUDE}, {HOTEL_LONGITUDE}. Lokasi perangkat hanya digunakan saat Anda menekan tombol “Cek jarak saya”.
+        </p>
       </div>
     </section>
   );
