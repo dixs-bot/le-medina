@@ -51,14 +51,26 @@ export default function Hero() {
         </div>
 
         {/* Hero Title */}
-        <h1 className="mb-6 font-editorial text-4xl font-bold leading-[1.1] tracking-tight text-ivory sm:text-6xl md:text-7xl">
-          Pengalaman Menginap Nyaman & Istimewa
-          <br />
-          <span className="font-normal italic text-gold-300">
-            Hôtel Le Médina & Resto
-          </span>{' '}
-          Singkawang
-        </h1>
+<h1 className="mb-6 font-editorial text-4xl font-bold leading-[1.12] tracking-tight text-ivory sm:text-5xl md:text-7xl">
+  Lebih dari Sekadar Menginap,
+  <br />
+  <span className="font-normal italic text-gold-300">
+    Destinasi Liburan Istimewa
+  </span>
+  <br />
+  <span className="mt-3 inline-block font-sans text-base font-medium leading-relaxed tracking-wide text-ivory/90 sm:text-xl md:text-2xl">
+    Hotel <span className="text-gold-300">·</span> Resort{" "}
+    <span className="text-gold-300">·</span> Resto{" "}
+    <span className="text-gold-300">·</span> Mini Waterpark
+  </span>
+  <br />
+  <span className="mt-2 inline-block text-2xl font-semibold text-gold-300 sm:text-3xl md:text-4xl">
+    Hôtel Le Médina
+  </span>
+  <span className="mt-2 block font-sans text-sm font-normal tracking-[0.2em] text-ivory/80 sm:text-base">
+    SINGKAWANG
+  </span>
+</h1>
 
         {/* Subtitle */}
         <p className="mx-auto mb-10 max-w-2xl text-base font-light leading-relaxed text-ivory-200/90 sm:text-lg">
