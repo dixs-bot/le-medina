@@ -50,27 +50,32 @@ export default function Hero() {
           </span>
         </div>
 
-        {/* Hero Title */}
-<h1 className="mb-6 font-editorial text-4xl font-bold leading-[1.12] tracking-tight text-ivory sm:text-5xl md:text-7xl">
-  Lebih dari Sekadar Menginap,
-  <br />
-  <span className="font-normal italic text-gold-300">
-    Destinasi Liburan Istimewa
-  </span>
-  <br />
-  <span className="mt-3 inline-block font-sans text-base font-medium leading-relaxed tracking-wide text-ivory/90 sm:text-xl md:text-2xl">
-    Hotel <span className="text-gold-300">·</span> Resort{" "}
-    <span className="text-gold-300">·</span> Resto{" "}
-    <span className="text-gold-300">·</span> Mini Waterpark
-  </span>
-  <br />
-  <span className="mt-2 inline-block text-2xl font-semibold text-gold-300 sm:text-3xl md:text-4xl">
-    Hôtel Le Médina
-  </span>
-  <span className="mt-2 block font-sans text-sm font-normal tracking-[0.2em] text-ivory/80 sm:text-base">
-    SINGKAWANG
-  </span>
-</h1>
+       {/* Hero Title */}
+<div className="mb-8">
+  <p className="mb-3 font-sans text-xs font-semibold uppercase tracking-[0.35em] text-gold-300 sm:text-sm">
+    Welcome to
+  </p>
+
+  <h1 className="font-editorial text-5xl font-bold leading-[1.05] tracking-tight text-ivory sm:text-6xl md:text-7xl lg:text-8xl">
+    <span className="block">
+      Hôtel Le <span className="italic text-gold-300">Médina</span>
+    </span>
+  </h1>
+
+  <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-2 font-sans text-xs font-medium uppercase tracking-[0.12em] text-ivory/90 sm:gap-x-3 sm:text-sm md:text-base">
+    <span>Hotel</span>
+    <span className="text-gold-300">·</span>
+    <span>Resort</span>
+    <span className="text-gold-300">·</span>
+    <span>Resto</span>
+    <span className="text-gold-300">·</span>
+    <span>Mini Waterpark</span>
+  </div>
+
+  <p className="mt-6 max-w-2xl font-editorial text-lg italic leading-relaxed text-ivory/80 sm:text-xl md:text-2xl">
+    Lebih dari sekadar menginap, hadirkan momen liburan yang istimewa.
+  </p>
+</div>
 
         {/* Subtitle */}
         <p className="mx-auto mb-10 max-w-2xl text-base font-light leading-relaxed text-ivory-200/90 sm:text-lg">
