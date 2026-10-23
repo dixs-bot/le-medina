@@ -100,12 +100,14 @@ export default function AdminDashboardClient({
   // Async data loading, refresh & actionable error states
   const [isLoadingReservasi, setIsLoadingReservasi] = useState(false);
   const [reservasiError, setReservasiError] = useState<string | null>(null);
+  const [updatingReservationCode, setUpdatingReservationCode] = useState<string | null>(null);
+  const [statusUpdateMessage, setStatusUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchLiveReservations = async () => {
     setIsLoadingReservasi(true);
     setReservasiError(null);
     try {
-      const res = await fetch('/api/reservations');
+      const res = await fetch('/api/reservations', { cache: 'no-store' });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || 'Gagal memuat reservasi langsung dari server.');
@@ -132,28 +134,83 @@ export default function AdminDashboardClient({
     return matchesStatus && matchesCari;
   });
 
-  // Handle status update
+  // Update status on the server, then synchronise the UI from the API response.
+  // If the request returns an error after the database committed, read the current
+  // status by reservation code so the dropdown does not keep showing stale state.
   const handleUpdateStatus = async (resId: string, newStatus: ReservationStatus) => {
+    const reservation = reservations.find((item) => item.id === resId);
+    if (!reservation || updatingReservationCode) return;
+    if (reservation.status === newStatus) return;
+
+    setUpdatingReservationCode(reservation.reservation_code);
+    setStatusUpdateMessage(null);
+
+    const applyStatus = (status: ReservationStatus, updated?: Partial<Reservation>) => {
+      setReservasi((previous) =>
+        previous.map((item) =>
+          item.reservation_code === reservation.reservation_code
+            ? { ...item, ...(updated || {}), status }
+            : item,
+        ),
+      );
+      setSelectedRes((previous) =>
+        previous && previous.reservation_code === reservation.reservation_code
+          ? { ...previous, ...(updated || {}), status }
+          : previous,
+      );
+    };
+
     try {
-      const res = reservations.find((r) => r.id === resId);
-      if (!res) return;
+      const response = await fetch(
+        `/api/reservations/${encodeURIComponent(reservation.reservation_code)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ status: newStatus }),
+        },
+      );
 
-      const response = await fetch(`/api/reservations/${res.reservation_code}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        setReservasi((prev) =>
-          prev.map((r) => (r.id === resId ? { ...r, status: newStatus } : r))
-        );
-        if (selectedRes && selectedRes.id === resId) {
-          setSelectedRes({ ...selectedRes, status: newStatus });
-        }
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Status gagal diperbarui (HTTP ${response.status}).`);
       }
-    } catch (e) {
-      console.error('Failed to update status', e);
+
+      const updatedReservation = payload.reservation as Reservation | undefined;
+      const persistedStatus = updatedReservation?.status || newStatus;
+      applyStatus(persistedStatus, updatedReservation);
+      setStatusUpdateMessage({
+        type: 'success',
+        text: `Status ${reservation.reservation_code} berhasil disimpan: ${
+          persistedStatus === 'pending' ? 'Menunggu Konfirmasi' :
+          persistedStatus === 'confirmed' ? 'Dikonfirmasi' :
+          persistedStatus === 'checked_in' ? 'Sudah Check-In' :
+          persistedStatus === 'checked_out' ? 'Sudah Check-Out' : 'Dibatalkan'
+        }.`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal memperbarui status reservasi.';
+      console.error('[admin/reservations] Status update failed:', message);
+
+      // Reconcile with the server in case the database update committed but a
+      // later step caused the PATCH response to fail.
+      try {
+        const checkResponse = await fetch(
+          `/api/reservations/${encodeURIComponent(reservation.reservation_code)}`,
+          { cache: 'no-store' },
+        );
+        const checkPayload = await checkResponse.json().catch(() => null);
+        const databaseStatus = checkPayload?.reservation?.status as ReservationStatus | undefined;
+        if (checkResponse.ok && databaseStatus) {
+          applyStatus(databaseStatus, checkPayload.reservation as Partial<Reservation>);
+        }
+      } catch {
+        // Keep the original request error visible below.
+      }
+
+      setStatusUpdateMessage({ type: 'error', text: message });
+    } finally {
+      setUpdatingReservationCode(null);
     }
   };
 
@@ -540,6 +597,20 @@ export default function AdminDashboardClient({
                 </div>
               </div>
 
+              {statusUpdateMessage && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`rounded-lg border px-4 py-3 text-xs font-semibold ${
+                    statusUpdateMessage.type === 'success'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                  }`}
+                >
+                  {statusUpdateMessage.text}
+                </div>
+              )}
+
               {/* Reservasi Table */}
               <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
@@ -624,11 +695,8 @@ export default function AdminDashboardClient({
                           <td className="p-4">
                             {canManageReservasi ? (
                               <select
-                                value={res.status === "confirmed" ? "Dikonfirmasi" :
-                                  res.status === "pending" ? "Menunggu Konfirmasi" :
-                                  res.status === "checked_in" ? "Sudah Check-In" :
-                                  res.status === "checked_out" ? "Sudah Check-Out" :
-                                  res.status === "cancelled" ? "Dibatalkan" : res.status}
+                                value={res.status}
+                                disabled={updatingReservationCode === res.reservation_code}
                                 onChange={(e) =>
                                   handleUpdateStatus(res.id, e.target.value as ReservationStatus)
                                 }
