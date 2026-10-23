@@ -51,18 +51,17 @@ export default function Hero() {
         </div>
 
        {/* Hero Title */}
-<div className="mb-8">
-  <p className="mb-3 font-sans text-xs font-semibold uppercase tracking-[0.35em] text-gold-300 sm:text-sm">
+<div className="mb-8 w-full text-center">
+  <p className="mb-3 text-center font-sans text-xs font-semibold uppercase tracking-[0.35em] text-gold-300 sm:text-sm">
     Welcome to
   </p>
 
-  <h1 className="font-editorial text-5xl font-bold leading-[1.05] tracking-tight text-ivory sm:text-6xl md:text-7xl lg:text-8xl">
-    <span className="block">
-      Hôtel Le <span className="italic text-gold-300">Médina</span>
-    </span>
+  <h1 className="w-full text-center font-editorial text-5xl font-bold leading-[1.05] tracking-tight text-ivory sm:text-6xl md:text-7xl lg:text-8xl">
+    Hôtel Le <span className="italic text-gold-300">Médina</span>
   </h1>
 
-  <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-2 font-sans text-xs font-medium uppercase tracking-[0.12em] text-ivory/90 sm:gap-x-3 sm:text-sm md:text-base">
+  {/* Kategori Layanan — Rata Tengah */}
+  <div className="mt-5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-2 text-center font-sans text-xs font-medium uppercase tracking-[0.12em] text-ivory/90 sm:gap-x-3 sm:text-sm md:text-base">
     <span>Hotel</span>
     <span className="text-gold-300">·</span>
     <span>Resort</span>
@@ -72,7 +71,8 @@ export default function Hero() {
     <span>Mini Waterpark</span>
   </div>
 
-  <p className="mt-6 max-w-2xl font-editorial text-lg italic leading-relaxed text-ivory/80 sm:text-xl md:text-2xl">
+  {/* Deskripsi — Rata Tengah */}
+  <p className="mx-auto mt-6 w-full max-w-2xl text-center font-editorial text-lg italic leading-relaxed text-ivory/80 sm:text-xl md:text-2xl">
     Lebih dari sekadar menginap, hadirkan momen liburan yang istimewa.
   </p>
 </div>
