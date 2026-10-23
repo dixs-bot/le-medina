@@ -286,7 +286,7 @@ export default function AdminDashboardClient({
       end_date: newRateEndDate, min_stay_nights: Number(newRateMinStay),
       days_of_week: newRateType === 'weekend' ? newRateDaysOfWeek : [],
     }, 'Aturan tarif berhasil ditambahkan. Harga pada website akan mengikuti aturan Supabase.');
-    if (saved) setNewRatePriceId('');
+    if (saved) setNewRatePriceIdr('');
   };
 
   const updateRateDraft = (rateId: string, patch: Partial<RoomRateDraft>) => {
