@@ -431,8 +431,8 @@ export async function getKamar(): Promise<Room[]> {
       .in('status', ['pending', 'confirmed', 'checked_in']),
   ]);
 
-  if (activeTypesResult.error || reservationsResult.error) {
-    const sourceError = activeTypesResult.error || reservationsResult.error;
+  const sourceError = activeTypesResult.error ?? reservationsResult.error;
+  if (sourceError) {
     logDbError('Gagal membaca status operasional inventaris', sourceError);
     throw new Error('Gagal membaca status reservasi pada inventaris kamar.');
   }
