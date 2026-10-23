@@ -59,6 +59,7 @@ export interface Room {
   current_status?: RoomOperationalStatus;
   current_guest?: string;
   current_reservation_code?: string;
+  current_check_in?: string;
   current_check_out?: string;
 }
 

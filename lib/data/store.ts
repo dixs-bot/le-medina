@@ -389,11 +389,12 @@ export async function getKamar(): Promise<Room[]> {
     if (isProduction) throw new Error('Supabase belum dikonfigurasi untuk membaca inventaris kamar.');
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
     return store.rooms.map((room) => {
-      const reservation = store.reservations.find((item) =>
-        item.assigned_room_number === room.room_number &&
-        ['pending', 'confirmed', 'checked_in'].includes(item.status) &&
-        (item.status === 'checked_in' || (item.check_in <= today && item.check_out > today))
-      );
+      const roomReservations = store.reservations
+        .filter((item) => item.assigned_room_number === room.room_number && ['pending', 'confirmed', 'checked_in'].includes(item.status))
+        .sort((a, b) => a.check_in.localeCompare(b.check_in));
+      const reservation = roomReservations.find((item) => item.status === 'checked_in')
+        || roomReservations.find((item) => item.check_in <= today && item.check_out > today)
+        || roomReservations.find((item) => item.check_in >= today);
       const currentStatus: RoomOperationalStatus = room.status !== 'available'
         ? room.status
         : reservation?.status === 'checked_in' ? 'occupied'
@@ -403,6 +404,7 @@ export async function getKamar(): Promise<Room[]> {
         current_status: currentStatus,
         current_guest: reservation?.guest_name,
         current_reservation_code: reservation?.reservation_code,
+        current_check_in: reservation?.check_in,
         current_check_out: reservation?.check_out,
       };
     });
@@ -469,11 +471,18 @@ export async function getKamar(): Promise<Room[]> {
   );
 
   return roomRows.map((room) => {
-    const liveReservations = (reservationsByRoom.get(room.id) || []).filter((reservation) =>
+    const scheduledReservations = (reservationsByRoom.get(room.id) || [])
+      .sort((a, b) => a.check_in.localeCompare(b.check_in));
+    const currentReservations = scheduledReservations.filter((reservation) =>
       reservation.status === 'checked_in' ||
       (reservation.check_in <= today && reservation.check_out > today)
     );
-    const currentReservation = liveReservations.find((reservation) => reservation.status === 'checked_in') || liveReservations[0];
+    // Prefer a currently occupied or active-stay booking. If none exists, show
+    // the next upcoming active booking as Reserved in the admin inventory, so a
+    // room booked for a future date is not visually mistaken for an unbooked room.
+    const currentReservation = currentReservations.find((reservation) => reservation.status === 'checked_in')
+      || currentReservations[0]
+      || scheduledReservations.find((reservation) => reservation.check_in >= today);
     let currentStatus: RoomOperationalStatus = room.status;
     if (room.status === 'available') {
       currentStatus = currentReservation?.status === 'checked_in' ? 'occupied' : currentReservation ? 'reserved' : 'available';
@@ -483,6 +492,7 @@ export async function getKamar(): Promise<Room[]> {
       current_status: currentStatus,
       current_guest: currentReservation?.guest_name,
       current_reservation_code: currentReservation?.reservation_code,
+      current_check_in: currentReservation?.check_in,
       current_check_out: currentReservation?.check_out,
     };
   });

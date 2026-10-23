@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -52,6 +52,30 @@ interface AdminDashboardClientProps {
   initialSitePengaturan: SitePengaturan;
   offers: Offer[];
   currentUser?: AdminUser;
+}
+
+interface WalkInAvailableRoom {
+  room_id: string;
+  room_number: string;
+  room_type_id: string;
+  room_type_name: string;
+  room_type_slug: string;
+  floor: number;
+  wing: string;
+  base_price_cents: number;
+  currency: string;
+  max_adults: number;
+  max_children: number;
+}
+
+function getJakartaDateISO(offsetDays = 0): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const date = new Date(`${values.year}-${values.month}-${values.day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
 }
 
 export default function AdminDashboardClient({
@@ -108,6 +132,120 @@ export default function AdminDashboardClient({
   const [reservasiError, setReservasiError] = useState<string | null>(null);
   const [updatingReservationCode, setUpdatingReservationCode] = useState<string | null>(null);
   const [statusUpdateMessage, setStatusUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Front-desk / walk-in guest flow. Availability is loaded for the exact dates,
+  // and the database transaction performs the final lock/check before saving.
+  const [walkInOpen, setWalkInOpen] = useState(false);
+  const [walkInGuestName, setWalkInGuestName] = useState('');
+  const [walkInGuestPhone, setWalkInGuestPhone] = useState('');
+  const [walkInGuestEmail, setWalkInGuestEmail] = useState('');
+  const [walkInGuestCount, setWalkInGuestCount] = useState(2);
+  const [walkInCheckIn, setWalkInCheckIn] = useState(getJakartaDateISO());
+  const [walkInCheckOut, setWalkInCheckOut] = useState(getJakartaDateISO(1));
+  const [walkInRoomId, setWalkInRoomId] = useState('');
+  const [walkInPaymentMethod, setWalkInPaymentMethod] = useState<'cash' | 'bank_transfer' | 'qris'>('cash');
+  const [walkInPaymentStatus, setWalkInPaymentStatus] = useState<'paid' | 'unpaid'>('unpaid');
+  const [walkInCheckInNow, setWalkInCheckInNow] = useState(false);
+  const [walkInRooms, setWalkInRooms] = useState<WalkInAvailableRoom[]>([]);
+  const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
+  const [walkInError, setWalkInError] = useState<string | null>(null);
+  const [walkInSaving, setWalkInSaving] = useState(false);
+
+  useEffect(() => {
+    if (!walkInOpen) return;
+    if (!walkInCheckIn || !walkInCheckOut || walkInCheckOut <= walkInCheckIn) {
+      setWalkInRooms([]);
+      setWalkInRoomId('');
+      return;
+    }
+
+    let ignore = false;
+    const loadAvailableRooms = async () => {
+      setWalkInRoomsLoading(true);
+      setWalkInError(null);
+      try {
+        const response = await fetch(
+          `/api/admin/walk-in-reservations?checkIn=${encodeURIComponent(walkInCheckIn)}&checkOut=${encodeURIComponent(walkInCheckOut)}`,
+          { cache: 'no-store' },
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.error || 'Gagal memuat kamar tersedia.');
+        const nextRooms = Array.isArray(payload?.rooms) ? payload.rooms as WalkInAvailableRoom[] : [];
+        if (ignore) return;
+        setWalkInRooms(nextRooms);
+        setWalkInRoomId((previous) => nextRooms.some((room) => room.room_id === previous) ? previous : '');
+      } catch (error) {
+        if (!ignore) {
+          setWalkInRooms([]);
+          setWalkInRoomId('');
+          setWalkInError(error instanceof Error ? error.message : 'Gagal memuat kamar tersedia.');
+        }
+      } finally {
+        if (!ignore) setWalkInRoomsLoading(false);
+      }
+    };
+    void loadAvailableRooms();
+    return () => { ignore = true; };
+  }, [walkInOpen, walkInCheckIn, walkInCheckOut]);
+
+  const handleCreateWalkInReservation = async () => {
+    if (!canManageReservasi || walkInSaving) return;
+    if (!walkInRoomId) {
+      setWalkInError('Pilih kamar yang tersedia terlebih dahulu.');
+      return;
+    }
+    setWalkInSaving(true);
+    setWalkInError(null);
+    setStatusUpdateMessage(null);
+    try {
+      const response = await fetch('/api/admin/walk-in-reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          room_id: walkInRoomId,
+          guest_name: walkInGuestName,
+          guest_phone: walkInGuestPhone,
+          guest_email: walkInGuestEmail,
+          guest_count: walkInGuestCount,
+          check_in: walkInCheckIn,
+          check_out: walkInCheckOut,
+          payment_method: walkInPaymentMethod,
+          payment_status: walkInPaymentStatus,
+          check_in_now: walkInCheckInNow,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Data tamu offline gagal disimpan (HTTP ${response.status}).`);
+      }
+
+      const reservation = payload.reservation || {};
+      const statusText = reservation.reservation_status === 'checked_in' ? 'SUDAH DITEMPATI / CHECK-IN' : 'RESERVED / MENUNGGU CHECK-IN';
+      const paymentText = reservation.payment_status === 'paid' ? 'LUNAS' : 'BELUM DIBAYAR';
+      setStatusUpdateMessage({
+        type: 'success',
+        text: `Tamu offline berhasil disimpan. Kamar ${reservation.room_number} (${reservation.room_type}) — ${statusText}. Kode ${reservation.reservation_code}. Tagihan ${formatPrice(Number(reservation.amount_idr || 0), 'IDR')} • ${paymentText}.`,
+      });
+      setWalkInGuestName('');
+      setWalkInGuestPhone('');
+      setWalkInGuestEmail('');
+      setWalkInGuestCount(2);
+      setWalkInCheckIn(getJakartaDateISO());
+      setWalkInCheckOut(getJakartaDateISO(1));
+      setWalkInPaymentMethod('cash');
+      setWalkInPaymentStatus('unpaid');
+      setWalkInCheckInNow(false);
+      setWalkInOpen(false);
+      await fetchLiveReservations();
+      await refreshDashboardMetrics();
+      router.refresh();
+    } catch (error) {
+      setWalkInError(error instanceof Error ? error.message : 'Gagal menyimpan tamu offline.');
+    } finally {
+      setWalkInSaving(false);
+    }
+  };
 
   const refreshDashboardMetrics = async () => {
     setIsRefreshingMetrics(true);
@@ -681,6 +819,101 @@ export default function AdminDashboardClient({
                 </div>
               </div>
 
+              <section className="bg-ivory rounded-xl border border-bordercolor shadow-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5">
+                  <div>
+                    <h2 className="font-editorial text-xl font-bold text-forest">Tamu Walk-in / Reservasi Offline</h2>
+                    <p className="text-xs text-mutedgray mt-1">Resepsionis dapat mencatat tamu yang datang langsung dan mengalokasikan kamar fisik.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setWalkInOpen((open) => !open); setWalkInError(null); }}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800"
+                  >
+                    {walkInOpen ? 'Tutup Form' : '+ Tambah Tamu Offline'}
+                  </button>
+                </div>
+
+                {walkInOpen && (
+                  <form
+                    className="border-t border-bordercolor p-4 sm:p-5 space-y-4"
+                    onSubmit={(event) => { event.preventDefault(); void handleCreateWalkInReservation(); }}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Nama lengkap tamu *
+                        <input required minLength={2} maxLength={100} value={walkInGuestName} onChange={(event) => setWalkInGuestName(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Nama sesuai identitas" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Nomor telepon / WhatsApp *
+                        <input required type="tel" maxLength={25} value={walkInGuestPhone} onChange={(event) => setWalkInGuestPhone(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="08xxxxxxxxxx" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Email (opsional)
+                        <input type="email" maxLength={100} value={walkInGuestEmail} onChange={(event) => setWalkInGuestEmail(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="email@contoh.com" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Jumlah orang *
+                        <input required type="number" min={1} max={20} value={walkInGuestCount} onChange={(event) => setWalkInGuestCount(Number(event.target.value))} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Tanggal check-in *
+                        <input required type="date" min={getJakartaDateISO()} value={walkInCheckIn} onChange={(event) => { const nextDate = event.target.value; setWalkInCheckIn(nextDate); if (nextDate !== getJakartaDateISO()) setWalkInCheckInNow(false); }} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Tanggal check-out *
+                        <input required type="date" min={walkInCheckIn || getJakartaDateISO()} value={walkInCheckOut} onChange={(event) => setWalkInCheckOut(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5 md:col-span-2 xl:col-span-1">
+                        Pilih kamar tersedia *
+                        <select required value={walkInRoomId} onChange={(event) => setWalkInRoomId(event.target.value)} disabled={walkInRoomsLoading || walkInRooms.length === 0} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal disabled:bg-gray-100">
+                          <option value="">{walkInRoomsLoading ? 'Memeriksa ketersediaan...' : walkInRooms.length ? 'Pilih nomor kamar' : 'Tidak ada kamar tersedia'}</option>
+                          {walkInRooms.map((room) => (
+                            <option key={room.room_id} value={room.room_id}>
+                              {room.room_number} — {room.room_type_name} · {formatPrice(Number(room.base_price_cents || 0) / 100, room.currency || 'IDR')}/malam
+                            </option>
+                          ))}
+                        </select>
+                        <span className="block text-[10px] font-normal text-mutedgray">Daftar ini mengikuti tanggal menginap. Database memeriksa ulang sebelum menyimpan.</span>
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Metode pembayaran *
+                        <select value={walkInPaymentMethod} onChange={(event) => setWalkInPaymentMethod(event.target.value as 'cash' | 'bank_transfer' | 'qris')} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal">
+                          <option value="cash">Cash / Tunai</option>
+                          <option value="bank_transfer">Transfer Bank</option>
+                          <option value="qris">QRIS</option>
+                        </select>
+                      </label>
+                      <label className="text-xs font-semibold text-forest space-y-1.5">
+                        Status pembayaran *
+                        <select value={walkInPaymentStatus} onChange={(event) => setWalkInPaymentStatus(event.target.value as 'paid' | 'unpaid')} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal">
+                          <option value="unpaid">Belum dibayar</option>
+                          <option value="paid">Sudah dibayar / Lunas</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="flex items-start gap-3 rounded-lg border border-bordercolor bg-ivory-50 p-3 text-xs text-forest">
+                      <input type="checkbox" checked={walkInCheckInNow} disabled={walkInCheckIn !== getJakartaDateISO()} onChange={(event) => setWalkInCheckInNow(event.target.checked)} className="mt-0.5 h-4 w-4 accent-forest-900" />
+                      <span><strong className="block">Tamu langsung menempati kamar (Check-In sekarang)</strong><span className="font-normal text-mutedgray">Centang jika tamu sudah datang dan menerima kunci. Status kamar menjadi “Sudah Ditempati”. Jika tidak dicentang, kamar berstatus “Reserved”.</span></span>
+                    </label>
+
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-900">
+                      <strong>Catatan pembayaran:</strong> pemilihan QRIS/Transfer di sini hanya mencatat metode yang dibayarkan di luar sistem. Ini belum membuat QR dinamis atau terhubung otomatis ke bank/payment gateway. Tandai “Lunas” hanya setelah pembayaran benar-benar diterima dan diverifikasi.
+                    </div>
+
+                    {walkInError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">{walkInError}</div>}
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <span className="text-[11px] text-mutedgray">Kamar tersedia untuk tanggal ini: {walkInRooms.length}</span>
+                      <button type="submit" disabled={walkInSaving || walkInRoomsLoading || !walkInRoomId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-xs font-bold text-charcoal hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-50">
+                        {walkInSaving ? 'Menyimpan data...' : 'Simpan Tamu & Alokasikan Kamar'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
+
               {statusUpdateMessage && (
                 <div
                   role="status"
@@ -757,6 +990,7 @@ export default function AdminDashboardClient({
                           </td>
                           <td className="p-4">
                             <span className="font-bold text-forest block">{res.guest_name}</span>
+                            {res.source === 'walk_in' && <span className="inline-block mt-1 rounded bg-violet-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-800">Tamu Offline / Resepsionis</span>}
                             <span className="text-[11px] text-mutedgray block">{res.guest_email}</span>
                             <span className="text-[11px] text-mutedgray block">{res.guest_phone}</span>
                           </td>
@@ -977,6 +1211,7 @@ export default function AdminDashboardClient({
                         <div className="rounded-md bg-ivory-200/70 border border-bordercolor p-3 text-xs">
                           <p className="font-semibold text-forest">{room.current_guest}</p>
                           {room.current_reservation_code && <p className="text-mutedgray mt-0.5">Kode: {room.current_reservation_code}</p>}
+                          {room.current_check_in && room.current_check_in > getJakartaDateISO() && <p className="text-mutedgray mt-0.5">Rencana check-in: {room.current_check_in}</p>}
                           {room.current_check_out && <p className="text-mutedgray mt-0.5">Rencana check-out: {room.current_check_out}</p>}
                         </div>
                       )}
