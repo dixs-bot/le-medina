@@ -1,3 +1,4 @@
+import { writeAdminAudit } from '../../../../lib/adminAudit';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '../../../../lib/auth';
 import { isSupabaseAdminConfigured, isSupabaseConfigured, supabaseAdmin } from '../../../../lib/supabaseClient';
