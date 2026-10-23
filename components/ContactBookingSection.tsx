@@ -80,10 +80,12 @@ export default function KontakBookingSection({
   const [availableRoomCount, setAvailableRoomCount] = useState<number | null>(null);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [pricingPreview, setPricingPreview] = useState<{ totalPriceCents: number; discountCents: number; discountPercentage?: number; nightsCount: number } | null>(null);
 
   useEffect(() => {
     if (!selectedRoomTypeId || !checkIn || !checkOut || checkOut <= checkIn) {
       setAvailableRoomCount(null);
+      setPricingPreview(null);
       setIsCheckingAvailability(false);
       setAvailabilityError('Pilih tanggal check-in dan check-out yang valid untuk memeriksa kamar.');
       return;
@@ -93,7 +95,8 @@ export default function KontakBookingSection({
     setIsCheckingAvailability(true);
     setAvailableRoomCount(null);
     setAvailabilityError(null);
-    fetch(`/api/availability?roomTypeId=${encodeURIComponent(selectedRoomTypeId)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`, {
+    const promoQuery = promoCode.trim() ? `&promoCode=${encodeURIComponent(promoCode.trim().toUpperCase())}` : '';
+    fetch(`/api/availability?roomTypeId=${encodeURIComponent(selectedRoomTypeId)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}${promoQuery}`, {
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -104,15 +107,28 @@ export default function KontakBookingSection({
       })
       .then((payload) => {
         setAvailableRoomCount(Number(payload?.availableKamarCount || 0));
+        const pricing = payload?.pricing;
+        if (pricing && Number.isFinite(Number(pricing.totalPriceCents)) && Number.isFinite(Number(pricing.discountCents))) {
+          setPricingPreview({
+            totalPriceCents: Number(pricing.totalPriceCents),
+            discountCents: Number(pricing.discountCents),
+            discountPercentage: pricing.discountPercentage == null ? undefined : Number(pricing.discountPercentage),
+            nightsCount: Number(pricing.nightsCount || 0),
+          });
+        } else {
+          setPricingPreview(null);
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === 'AbortError') return;
+        setPricingPreview(null);
+        setAvailableRoomCount(null);
         setAvailabilityError(error instanceof Error ? error.message : 'Ketersediaan kamar tidak dapat diperiksa.');
       })
       .finally(() => setIsCheckingAvailability(false));
 
     return () => controller.abort();
-  }, [selectedRoomTypeId, checkIn, checkOut]);
+  }, [selectedRoomTypeId, checkIn, checkOut, promoCode]);
 
   // Pricing calculation preview
   const selectedRoom = roomTypes.find((r) => r.id === selectedRoomTypeId);
@@ -124,12 +140,9 @@ export default function KontakBookingSection({
   };
   const nights = calcNights();
   const baseRateCents = selectedRoom ? selectedRoom.base_price_cents : 0;
-  const rawSubtotalCents = baseRateCents * nights;
-  // Promo discounts must be validated by the database before being shown as a real discount.
-  // Promo integration is not enabled in this workflow stage, so do not display client-only discounts.
-  const discountRate = 0;
-  const discountCents = 0;
-  const estimatedTotalCents = rawSubtotalCents - discountCents;
+  const discountCents = pricingPreview?.discountCents || 0;
+  const rawSubtotalCents = pricingPreview ? pricingPreview.totalPriceCents + discountCents : baseRateCents * nights;
+  const estimatedTotalCents = pricingPreview?.totalPriceCents ?? rawSubtotalCents;
 
   const handleBookingKirim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,11 +165,6 @@ export default function KontakBookingSection({
 
     if (!guestName || !guestEmail || !guestPhone) {
       setErrorMsg('Mohon lengkapi nama, email, dan nomor telepon Anda.');
-      return;
-    }
-
-    if (promoCode.trim()) {
-      setErrorMsg('Kode promo belum aktif pada alur pemesanan online. Kosongkan kode promo atau hubungi staf hotel.');
       return;
     }
 
@@ -497,7 +505,8 @@ export default function KontakBookingSection({
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="e.g. ROMANCE26"
+                        maxLength={32}
+                        placeholder="MASUKKAN KODE VOUCHER"
                         value={promoCode}
                         onChange={(e) => setPromoCode(e.target.value)}
                         className="w-full pl-8 pr-3.5 py-2.5 rounded bg-ivory-50 border border-bordercolor text-xs uppercase font-mono focus:ring-2 focus:ring-gold focus:outline-none"
@@ -505,7 +514,7 @@ export default function KontakBookingSection({
                       <Tag className="w-3.5 h-3.5 text-gold absolute left-2.5 top-3" />
                     </div>
                     <span className="text-[10px] text-mutedgray mt-1 block">
-                      Kode promo belum aktif pada checkout otomatis. Kosongkan kolom ini atau hubungi staf hotel.
+                      Masukkan kode voucher resmi yang masih aktif. Diskon akan diverifikasi otomatis berdasarkan tanggal menginap.
                     </span>
                   </div>
                 </div>
@@ -565,8 +574,13 @@ export default function KontakBookingSection({
                       </span>
                     )}
                   </div>
+                  {discountCents > 0 && (
+                    <span className="mt-1 block text-xs font-semibold text-status-success">
+                      Voucher {promoCode.trim().toUpperCase()} aktif{pricingPreview?.discountPercentage ? ` — diskon ${pricingPreview.discountPercentage}%` : ''}.
+                    </span>
+                  )}
                   <span className="text-[11px] text-mutedgray block mt-0.5">
-                    *Total akhir dihitung server saat reservasi. Pembayaran dapat diselesaikan di resepsionis hotel.
+                    *Tarif dan voucher diverifikasi server saat reservasi. Pembayaran dapat diselesaikan di resepsionis hotel.
                   </span>
                 </div>
 

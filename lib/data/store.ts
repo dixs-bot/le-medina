@@ -146,6 +146,9 @@ function mapReservationRow(row: any, extras?: {
     source: row.source || 'direct_web',
     whatsapp_notified: Boolean(row.whatsapp_notified),
     internal_notes: row.internal_notes || undefined,
+    promo_code: row.promo_code || null,
+    discount_amount_cents: Number(row.discount_amount_cents || 0),
+    discount_percentage: row.discount_percentage == null ? null : Number(row.discount_percentage),
     created_at: row.created_at,
     assigned_room_number: extras?.assignedRoomNumber || 'Belum Ditentukan',
     room_type: extras?.roomType,
@@ -535,10 +538,6 @@ export async function calculateStayPricing(
   if (!roomType) throw new Error(`Tipe kamar dengan ID '${roomTypeId}' tidak ditemukan atau tidak aktif.`);
 
   if (isSupabaseConfigured) {
-    if (promoCode) {
-      throw new Error('Kode promo belum diintegrasikan dengan mesin harga database. Lanjutkan tanpa kode promo atau hubungi bagian reservasi.');
-    }
-
     const db = requireAdminDb();
     const { data, error } = await db.rpc('calculate_stay_rates', {
       p_room_type_id: roomTypeId,
@@ -565,12 +564,41 @@ export async function calculateStayPricing(
       throw new Error('Database mengembalikan tarif kamar yang tidak valid.');
     }
 
+    const rawTotalPriceCents = rates.reduce((sum, rate) => sum + rate.priceCents, 0);
+    let discountCents = 0;
+    let discountPercentage: number | undefined;
+
+    if (promoCode?.trim()) {
+      const normalizedCode = promoCode.trim().toUpperCase();
+      const { data: voucher, error: voucherError } = await db
+        .from('offers')
+        .select('code, discount_percentage, valid_from, valid_to, is_active')
+        .eq('code', normalizedCode)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (voucherError) {
+        logDbError('Gagal memvalidasi kode voucher', voucherError);
+        throw new Error('Kode voucher belum dapat diverifikasi. Silakan coba lagi.');
+      }
+      if (!voucher || checkIn < String(voucher.valid_from) || checkIn > String(voucher.valid_to)) {
+        throw new Error('Kode voucher tidak valid, nonaktif, atau tidak berlaku pada tanggal check-in ini.');
+      }
+      const pct = Number(voucher.discount_percentage);
+      if (!Number.isInteger(pct) || pct < 1 || pct > 100) {
+        throw new Error('Persentase diskon voucher tidak valid. Silakan hubungi hotel.');
+      }
+      discountPercentage = pct;
+      discountCents = Math.round((rawTotalPriceCents * pct) / 100);
+    }
+
     return {
       nightsCount: rates.length,
       rates,
       basePriceCents: Number(roomType.base_price_cents),
-      totalPriceCents: rates.reduce((sum, rate) => sum + rate.priceCents, 0),
-      discountCents: 0,
+      totalPriceCents: Math.max(0, rawTotalPriceCents - discountCents),
+      discountCents,
+      discountPercentage,
       currency: roomType.currency || 'IDR',
     };
   }
@@ -594,7 +622,7 @@ export async function calculateStayPricing(
   let discountCents = 0;
   let discountPercentage = 0;
 
-  if (promoCode) {
+  if (promoCode?.trim()) {
     const cleanPromo = promoCode.trim().toUpperCase();
     const promo = store.offers.find((offer) =>
       offer.is_active &&
@@ -602,11 +630,11 @@ export async function calculateStayPricing(
       checkIn >= offer.valid_from &&
       checkIn <= offer.valid_to
     );
-
-    if (promo?.discount_percentage) {
-      discountPercentage = promo.discount_percentage;
-      discountCents = Math.round((rawTotalCents * promo.discount_percentage) / 100);
+    if (!promo || !promo.discount_percentage) {
+      throw new Error('Kode voucher tidak valid, nonaktif, atau tidak berlaku pada tanggal check-in ini.');
     }
+    discountPercentage = promo.discount_percentage;
+    discountCents = Math.round((rawTotalCents * promo.discount_percentage) / 100);
   }
 
   return {
@@ -879,10 +907,6 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
   }
 
   if (isSupabaseConfigured) {
-    if (promo_code) {
-      throw new Error('Kode promo belum dapat diproses oleh mesin reservasi database. Silakan lanjut tanpa kode promo atau hubungi bagian reservasi.');
-    }
-
     const db = requireAdminDb();
     const { data, error } = await db.rpc('create_atomic_reservation_with_payment', {
       p_guest_name: guest_name.trim(),
@@ -895,6 +919,7 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       p_room_type_id: room_type_id,
       p_special_requests: special_requests?.trim() || null,
       p_payment_method: payment_method,
+      p_promo_code: promo_code?.trim() ? promo_code.trim().toUpperCase() : null,
     });
 
     if (error) {
@@ -961,6 +986,9 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       paid_at: typeof result.paid_at === 'string' ? result.paid_at : null,
       source: 'direct_web',
       whatsapp_notified: false,
+      promo_code: typeof result.promo_code === 'string' ? result.promo_code : null,
+      discount_amount_cents: Number(result.discount_amount_cents || 0),
+      discount_percentage: result.discount_percentage == null ? null : Number(result.discount_percentage),
       created_at: new Date().toISOString(),
       assigned_room_number: assignedRoomNumber,
       room_type: roomType,
@@ -1003,6 +1031,9 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       currency: pricing.currency,
       source: 'direct_web',
       whatsapp_notified: false,
+      promo_code: promo_code?.trim().toUpperCase() || null,
+      discount_amount_cents: pricing.discountCents,
+      discount_percentage: pricing.discountPercentage || null,
       created_at: new Date().toISOString(),
       assigned_room_number: assignedRoom.room_number,
       room_type: roomType,
@@ -1392,11 +1423,13 @@ export async function getOffers(): Promise<Offer[]> {
     return store.offers.filter((offer) => offer.is_active);
   }
 
+  const todayJakarta = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
   const { data, error } = await supabase
     .from('offers')
     .select('*')
     .eq('is_active', true)
-    .order('valid_from', { ascending: false });
+    .gte('valid_to', todayJakarta)
+    .order('valid_from', { ascending: true });
   if (error) {
     logDbError('Gagal membaca promo hotel', error);
     if (isProduction) throw new Error('Gagal membaca promo hotel dari database.');

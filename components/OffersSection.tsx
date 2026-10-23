@@ -39,7 +39,18 @@ export default function OffersSection({
           </p>
         </div>
 
-        {/* Offers Cards Grid */}
+        {/* Voucher cards are sourced only from active Supabase offers. */}
+        {offers.length === 0 ? (
+          <div className="mx-auto max-w-2xl rounded-xl border border-gold/30 bg-forest-950/70 px-6 py-12 text-center shadow-xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-gold-300">
+              <Tag className="h-6 w-6" />
+            </div>
+            <h3 className="font-editorial text-2xl font-bold text-ivory">Voucher Spesial Segera Hadir</h3>
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-ivory-200/80">
+              Tim manajemen sedang menyiapkan penawaran resmi Hôtel Le Médina. Silakan kembali untuk melihat kode voucher dan potongan harga yang sedang berlaku.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
           {offers.map((offer) => (
             <div
@@ -85,7 +96,7 @@ export default function OffersSection({
                   <div className="flex items-center gap-2 text-xs text-ivory-300/80 pb-4 border-b border-forest-800">
                     <Calendar className="w-4 h-4 text-gold-400" />
                     <span>
-                      Berlaku: <strong className="text-ivory">{formatDate(offer.valid_from)}</strong> to{' '}
+                      Berlaku: <strong className="text-ivory">{formatDate(offer.valid_from)}</strong> s.d.{' '}
                       <strong className="text-ivory">{formatDate(offer.valid_to)}</strong>
                     </span>
                   </div>
@@ -100,7 +111,7 @@ export default function OffersSection({
                     <button
                       onClick={() => handleCopy(offer.code!)}
                       className="flex items-center gap-2 bg-forest-900 hover:bg-forest-800 text-gold px-3 py-1.5 rounded border border-gold/40 text-xs font-mono font-bold tracking-wider transition-all"
-                      title="Click hingga copy code"
+                      title="Klik untuk menyalin kode voucher"
                     >
                       <span>{offer.code}</span>
                       {copiedCode === offer.code ? (
@@ -123,6 +134,7 @@ export default function OffersSection({
             </div>
           ))}
         </div>
+        )}
       </div>
     </section>
   );

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const roomTypeId = sanitizeString(searchParams.get('roomTypeId'), 64);
     const checkIn = String(searchParams.get('checkIn') || '').trim();
     const checkOut = String(searchParams.get('checkOut') || '').trim();
-    const promoCode = searchParams.get('promoCode') ? sanitizeString(searchParams.get('promoCode'), 20) : undefined;
+    const promoCode = searchParams.get('promoCode') ? sanitizeString(searchParams.get('promoCode'), 32) : undefined;
 
     if (!roomTypeId || !checkIn || !checkOut) {
       return NextResponse.json(

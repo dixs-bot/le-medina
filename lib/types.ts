@@ -115,6 +115,9 @@ export interface Reservation {
   source: string;
   whatsapp_notified: boolean;
   internal_notes?: string;
+  promo_code?: string | null;
+  discount_amount_cents?: number;
+  discount_percentage?: number | null;
   created_at: string;
   room_type?: RoomType;
   assigned_room_number?: string;

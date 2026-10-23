@@ -16,7 +16,7 @@ import {
   ReservationStatus,
   RoomRate,
 } from '../../lib/types';
-import { formatPrice } from '../../lib/utils';
+import { formatDate, formatPrice } from '../../lib/utils';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -46,8 +46,12 @@ import {
   Save,
   X,
   Trash2,
+  Camera,
+  UserCircle,
+  UserPlus,
+  Activity,
 } from 'lucide-react';
-import { AdminUser } from '../../lib/auth';
+import type { AdminUser } from '../../lib/auth';
 
 interface AdminDashboardClientProps {
   initialMetrics: AdminMetrics;
@@ -86,6 +90,29 @@ function createEmptyRestaurantMenuDraft(): RestaurantMenuDraft {
   };
 }
 
+interface VoucherDraft {
+  title: string;
+  code: string;
+  tagline: string;
+  description: string;
+  discountPercentage: string;
+  validFrom: string;
+  validTo: string;
+  imageFile: File | null;
+  imagePreviewUrl: string;
+  existingImageUrl: string;
+  isActive: boolean;
+}
+
+function createEmptyVoucherDraft(): VoucherDraft {
+  return {
+    title: '', code: '', tagline: '', description: '', discountPercentage: '10',
+    validFrom: getJakartaDateISO(), validTo: getJakartaDateISO(30),
+    imageFile: null, imagePreviewUrl: '', existingImageUrl: '', isActive: false,
+  };
+}
+
+
 interface RoomRateDraft {
   rate_name: string;
   rate_type: RoomRateKind;
@@ -109,6 +136,61 @@ interface WalkInAvailableRoom {
   currency: string;
   max_adults: number;
   max_children: number;
+}
+
+
+interface ManagedAdminAccount {
+  id: string;
+  auth_user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+  is_active: boolean;
+  created_at: string;
+  roles: Role[];
+  primary_role: Role | null;
+  last_login_at: string | null;
+  last_activity_at: string | null;
+  current_shift: string | null;
+  session_state: string;
+}
+
+interface AdminAuditEntry {
+  id: string;
+  actor_user_id: string;
+  actor_name: string;
+  actor_email: string;
+  actor_role: string;
+  action: string;
+  target_type?: string | null;
+  target_id?: string | null;
+  details?: Record<string, unknown> | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at: string;
+}
+
+function formatAdminAuditTime(value?: string | null): string {
+  if (!value) return 'Belum ada';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function auditActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    login: 'Login admin', logout: 'Logout admin',
+    hotel_settings_updated: 'Mengubah pengaturan hotel', admin_profile_updated: 'Memperbarui profil/foto',
+    admin_account_created: 'Menambahkan akun admin', admin_account_activated: 'Mengaktifkan akun',
+    admin_account_deactivated: 'Menonaktifkan akun', reservation_status_updated: 'Mengubah status reservasi',
+    offline_payment_received: 'Mencatat pembayaran', room_created: 'Menambah kamar',
+    room_base_price_updated: 'Mengubah harga dasar kamar', room_rate_created: 'Menambah tarif khusus',
+    room_rate_updated: 'Mengubah tarif khusus', restaurant_menu_created: 'Menambah menu restoran',
+    restaurant_menu_updated: 'Mengubah menu restoran', restaurant_menu_deleted: 'Menghapus menu restoran',
+    voucher_created: 'Menambahkan voucher', voucher_updated: 'Mengubah voucher', voucher_deleted: 'Menghapus voucher',
+    voucher_activated: 'Mengaktifkan voucher', voucher_deactivated: 'Menonaktifkan voucher',
+  };
+  return labels[action] || action.replace(/_/g, ' ');
 }
 
 function getJakartaDateISO(offsetDays = 0): string {
@@ -136,7 +218,7 @@ export default function AdminDashboardClient({
 
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'menu' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'menu' | 'settings'
   >('overview');
 
   // RBAC active role
@@ -174,9 +256,169 @@ export default function AdminDashboardClient({
   const [menuError, setMenuError] = useState<string | null>(null);
   const [menuMessage, setMenuMessage] = useState<string | null>(null);
 
+  // Voucher CMS reads all active/inactive voucher records directly from Supabase.
+  const [managedVouchers, setManagedVouchers] = useState<Offer[]>(offers);
+  const [voucherEditorOpen, setVoucherEditorOpen] = useState(false);
+  const [editingVoucherId, setEditingVoucherId] = useState<string | null>(null);
+  const [voucherDraft, setVoucherDraft] = useState<VoucherDraft>(createEmptyVoucherDraft);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherSaving, setVoucherSaving] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
+  const [voucherDeletingId, setVoucherDeletingId] = useState<string | null>(null);
+
   // Site settings state
   const [sitePengaturan, setSitePengaturan] = useState<SitePengaturan>(initialSitePengaturan);
   const [settingsSuccess, setPengaturanSuccess] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [displayAdminName, setDisplayAdminName] = useState(currentUser?.name || 'Admin Hotel');
+  const [adminProfileName, setAdminProfileName] = useState(currentUser?.name || '');
+  const [adminProfilePhone, setAdminProfilePhone] = useState('');
+  const [adminProfileAvatar, setAdminProfileAvatar] = useState(currentUser?.avatarUrl || '');
+  const [adminProfileFile, setAdminProfileFile] = useState<File | null>(null);
+  const [adminProfileLoading, setAdminProfileLoading] = useState(false);
+  const [adminProfileSaving, setAdminProfileSaving] = useState(false);
+  const [adminProfileError, setAdminProfileError] = useState<string | null>(null);
+  const [adminProfileMessage, setAdminProfileMessage] = useState<string | null>(null);
+  const [managedAdminAccounts, setManagedAdminAccounts] = useState<ManagedAdminAccount[]>([]);
+  const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditEntry[]>([]);
+  const [adminAccountsLoading, setAdminAccountsLoading] = useState(false);
+  const [adminAccountsError, setAdminAccountsError] = useState<string | null>(null);
+  const [adminAccountsMessage, setAdminAccountsMessage] = useState<string | null>(null);
+  const [adminAccountSaving, setAdminAccountSaving] = useState(false);
+  const [newAdminFullName, setNewAdminFullName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminRole, setNewAdminRole] = useState<Role>('admin');
+
+  const handleSaveSiteSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsError(null);
+    setPengaturanSuccess(false);
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sitePengaturan),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.settings) throw new Error(payload?.error || 'Pengaturan gagal disimpan ke Supabase.');
+      setSitePengaturan(payload.settings as SitePengaturan);
+      setPengaturanSuccess(true);
+      setTimeout(() => setPengaturanSuccess(false), 5000);
+      router.refresh();
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : 'Pengaturan gagal disimpan.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const loadAdminProfile = useCallback(async () => {
+    setAdminProfileLoading(true);
+    setAdminProfileError(null);
+    try {
+      const response = await fetch('/api/admin/profile', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.profile) throw new Error(payload?.error || 'Gagal membaca profil admin.');
+      setAdminProfileName(payload.profile.full_name || currentUser?.name || '');
+      setDisplayAdminName(payload.profile.full_name || currentUser?.name || 'Admin Hotel');
+      setAdminProfilePhone(payload.profile.phone || '');
+      setAdminProfileAvatar(payload.profile.avatar_url || '');
+    } catch (error) {
+      setAdminProfileError(error instanceof Error ? error.message : 'Gagal membaca profil admin.');
+    } finally {
+      setAdminProfileLoading(false);
+    }
+  }, [currentUser?.name]);
+
+  const saveAdminProfile = async () => {
+    setAdminProfileSaving(true);
+    setAdminProfileError(null);
+    setAdminProfileMessage(null);
+    try {
+      const form = new FormData();
+      form.set('full_name', adminProfileName);
+      form.set('phone', adminProfilePhone);
+      if (adminProfileFile) form.set('avatar', adminProfileFile);
+      const response = await fetch('/api/admin/profile', { method: 'PUT', body: form });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.profile) throw new Error(payload?.error || 'Profil admin gagal disimpan.');
+      setAdminProfileName(payload.profile.full_name);
+      setDisplayAdminName(payload.profile.full_name);
+      setAdminProfilePhone(payload.profile.phone || '');
+      setAdminProfileAvatar(payload.profile.avatar_url || '');
+      setAdminProfileFile(null);
+      setAdminProfileMessage('Profil dan foto admin berhasil disimpan.');
+      router.refresh();
+    } catch (error) {
+      setAdminProfileError(error instanceof Error ? error.message : 'Profil admin gagal disimpan.');
+    } finally {
+      setAdminProfileSaving(false);
+    }
+  };
+
+  const loadAdminAccountsAndAudit = useCallback(async () => {
+    if (currentUser?.role !== 'super_admin') return;
+    setAdminAccountsLoading(true);
+    setAdminAccountsError(null);
+    try {
+      const response = await fetch('/api/admin/users', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal membaca daftar akun admin.');
+      setManagedAdminAccounts(Array.isArray(payload?.accounts) ? payload.accounts : []);
+      setAdminAuditLogs(Array.isArray(payload?.audit) ? payload.audit : []);
+    } catch (error) {
+      setAdminAccountsError(error instanceof Error ? error.message : 'Gagal membaca daftar akun admin.');
+    } finally {
+      setAdminAccountsLoading(false);
+    }
+  }, [currentUser?.role]);
+
+  const createAdminAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAdminAccountSaving(true);
+    setAdminAccountsError(null);
+    setAdminAccountsMessage(null);
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: newAdminFullName, email: newAdminEmail, password: newAdminPassword, role: newAdminRole }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Akun admin gagal dibuat.');
+      setNewAdminFullName(''); setNewAdminEmail(''); setNewAdminPassword(''); setNewAdminRole('admin');
+      setAdminAccountsMessage('Akun staf berhasil dibuat. Sampaikan email dan kata sandi awal secara aman kepada staf terkait.');
+      await loadAdminAccountsAndAudit();
+    } catch (error) {
+      setAdminAccountsError(error instanceof Error ? error.message : 'Akun admin gagal dibuat.');
+    } finally {
+      setAdminAccountSaving(false);
+    }
+  };
+
+  const toggleAdminAccount = async (account: ManagedAdminAccount) => {
+    if (!account.auth_user_id) return;
+    setAdminAccountsError(null); setAdminAccountsMessage(null);
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth_user_id: account.auth_user_id, is_active: !account.is_active }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Status akun gagal diubah.');
+      setAdminAccountsMessage(account.is_active ? 'Akun staf dinonaktifkan. Akses API ditolak setelah perubahan ini.' : 'Akun staf diaktifkan kembali.');
+      await loadAdminAccountsAndAudit();
+    } catch (error) {
+      setAdminAccountsError(error instanceof Error ? error.message : 'Status akun gagal diubah.');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      void loadAdminProfile();
+      if (currentUser?.role === 'super_admin' && currentRole === 'super_admin') void loadAdminAccountsAndAudit();
+    }
+  }, [activeTab, currentRole, currentUser?.role, loadAdminProfile, loadAdminAccountsAndAudit]);
 
   // Async data loading, refresh & actionable error states
   const [isLoadingReservasi, setIsLoadingReservasi] = useState(false);
@@ -746,6 +988,133 @@ export default function AdminDashboardClient({
     }
   };
 
+  const reloadVouchers = useCallback(async () => {
+    setVoucherLoading(true);
+    setVoucherError(null);
+    try {
+      const response = await fetch('/api/admin/vouchers', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal membaca daftar voucher dari Supabase.');
+      setManagedVouchers(Array.isArray(payload?.vouchers) ? payload.vouchers as Offer[] : []);
+    } catch (error) {
+      setVoucherError(error instanceof Error ? error.message : 'Daftar voucher gagal dimuat.');
+    } finally {
+      setVoucherLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'vouchers') void reloadVouchers();
+  }, [activeTab, reloadVouchers]);
+
+  const openNewVoucherEditor = () => {
+    setEditingVoucherId(null);
+    setVoucherDraft(createEmptyVoucherDraft());
+    setVoucherError(null);
+    setVoucherMessage(null);
+    setVoucherEditorOpen(true);
+  };
+
+  const openEditVoucherEditor = (voucher: Offer) => {
+    setEditingVoucherId(voucher.id);
+    setVoucherDraft({
+      title: voucher.title || '',
+      code: (voucher.code || '').toUpperCase(),
+      tagline: voucher.tagline || '',
+      description: voucher.description || '',
+      discountPercentage: String(voucher.discount_percentage || 1),
+      validFrom: voucher.valid_from || getJakartaDateISO(),
+      validTo: voucher.valid_to || getJakartaDateISO(30),
+      imageFile: null,
+      imagePreviewUrl: '',
+      existingImageUrl: voucher.image_url || '',
+      isActive: Boolean(voucher.is_active),
+    });
+    setVoucherError(null);
+    setVoucherMessage(null);
+    setVoucherEditorOpen(true);
+  };
+
+  const handleSaveVoucher = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (voucherSaving) return;
+    setVoucherSaving(true);
+    setVoucherError(null);
+    setVoucherMessage(null);
+    try {
+      const form = new FormData();
+      form.set('title', voucherDraft.title);
+      form.set('code', voucherDraft.code.toUpperCase().trim());
+      form.set('tagline', voucherDraft.tagline);
+      form.set('description', voucherDraft.description);
+      form.set('discount_percentage', voucherDraft.discountPercentage);
+      form.set('valid_from', voucherDraft.validFrom);
+      form.set('valid_to', voucherDraft.validTo);
+      form.set('is_active', String(voucherDraft.isActive));
+      if (voucherDraft.imageFile) form.set('image', voucherDraft.imageFile);
+      if (editingVoucherId) form.set('id', editingVoucherId);
+
+      const response = await fetch('/api/admin/vouchers', {
+        method: editingVoucherId ? 'PATCH' : 'POST',
+        body: form,
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Voucher gagal disimpan (HTTP ${response.status}).`);
+      }
+      const savedVoucher = payload.voucher as Offer;
+      setVoucherMessage(`Voucher ${savedVoucher.code} berhasil disimpan ke Supabase.`);
+      setVoucherEditorOpen(false);
+      setVoucherDraft(createEmptyVoucherDraft());
+      await reloadVouchers();
+      router.refresh();
+    } catch (error) {
+      setVoucherError(error instanceof Error ? error.message : 'Voucher gagal disimpan ke Supabase.');
+    } finally {
+      setVoucherSaving(false);
+    }
+  };
+
+  const toggleVoucherActive = async (voucher: Offer) => {
+    setVoucherError(null);
+    setVoucherMessage(null);
+    try {
+      const response = await fetch('/api/admin/vouchers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ id: voucher.id, is_active: !voucher.is_active }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) throw new Error(payload?.error || 'Status voucher gagal diperbarui.');
+      setManagedVouchers((previous) => previous.map((item) => item.id === voucher.id ? payload.voucher as Offer : item));
+      setVoucherMessage(`Voucher ${voucher.code} ${!voucher.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      router.refresh();
+    } catch (error) {
+      setVoucherError(error instanceof Error ? error.message : 'Status voucher gagal diperbarui.');
+    }
+  };
+
+  const handleDeleteVoucher = async (voucher: Offer) => {
+    if (!window.confirm(`Hapus voucher ${voucher.code} (${voucher.title})? Kode ini tidak akan dapat dipakai lagi setelah dihapus.`)) return;
+    setVoucherDeletingId(voucher.id);
+    setVoucherError(null);
+    setVoucherMessage(null);
+    try {
+      const response = await fetch(`/api/admin/vouchers?id=${encodeURIComponent(voucher.id)}`, { method: 'DELETE', cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) throw new Error(payload?.error || 'Voucher gagal dihapus.');
+      setManagedVouchers((previous) => previous.filter((item) => item.id !== voucher.id));
+      setVoucherMessage(`Voucher ${voucher.code} berhasil dihapus.`);
+      router.refresh();
+    } catch (error) {
+      setVoucherError(error instanceof Error ? error.message : 'Voucher gagal dihapus.');
+    } finally {
+      setVoucherDeletingId(null);
+    }
+  };
+
   // Role permissions helpers
   const canManageReservasi =
     currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'reservation_staff';
@@ -779,9 +1148,16 @@ export default function AdminDashboardClient({
         {/* User Info, RBAC & Logout */}
         <div className="flex items-center gap-3">
           {currentUser && (
-            <div className="hidden lg:flex flex-col text-right">
-              <span className="text-xs font-semibold text-ivory leading-tight">{currentUser.name}</span>
-              <span className="text-[10px] text-ivory-300 leading-tight">{currentUser.email}</span>
+            <div className="flex items-center gap-2.5">
+              {adminProfileAvatar ? (
+                <img src={adminProfileAvatar} alt={`Foto ${displayAdminName}`} className="h-9 w-9 rounded-full border-2 border-gold/70 object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gold/60 bg-forest-800 text-gold-300"><UserCircle className="h-5 w-5" /></div>
+              )}
+              <div className="hidden lg:flex flex-col text-right">
+                <span className="text-xs font-semibold text-ivory leading-tight">{displayAdminName || currentUser.name}</span>
+                <span className="text-[10px] text-ivory-300 leading-tight">{currentUser.email}</span>
+              </div>
             </div>
           )}
 
@@ -888,6 +1264,18 @@ export default function AdminDashboardClient({
             >
               <DollarSign className="w-4 h-4" />
               <span>Tarif & Ketentuan</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('vouchers')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                activeTab === 'vouchers'
+                  ? 'bg-gold text-charcoal font-bold shadow'
+                  : 'text-ivory-200 hover:bg-forest-800'
+              }`}
+            >
+              <Percent className="w-4 h-4" />
+              <span>Voucher & Promo</span>
             </button>
 
             <button
@@ -1759,6 +2147,134 @@ export default function AdminDashboardClient({
             </div>
           )}
 
+          {/* TAB VOUCHERS: PROMO CMS */}
+          {activeTab === 'vouchers' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h1 className="font-editorial text-3xl font-bold text-forest mb-1">Voucher & Promo</h1>
+                  <p className="text-xs text-mutedgray">Kelola kode voucher resmi, potongan harga, masa berlaku, status, dan foto promosi. Semua data dibaca dan disimpan ke Supabase.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => void reloadVouchers()} disabled={voucherLoading} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-xs font-semibold text-forest disabled:opacity-50">
+                    <RefreshCw className={`h-3.5 w-3.5 ${voucherLoading ? 'animate-spin' : ''}`} /> Segarkan
+                  </button>
+                  <button type="button" disabled={!canManageContent || voucherSaving} onClick={openNewVoucherEditor} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                    <Plus className="h-4 w-4" /> Tambah Voucher
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gold/30 bg-gold-50 p-4 text-xs leading-relaxed text-forest-900">
+                Kode harus unik. Voucher di website pelanggan hanya tampil jika status aktif dan tanggal akhirnya belum lewat. Diskon dihitung ulang di server ketika kode digunakan pada reservasi.
+              </div>
+              {voucherError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{voucherError}</div>}
+              {voucherMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{voucherMessage}</div>}
+
+              {voucherEditorOpen && (
+                <form onSubmit={handleSaveVoucher} className="space-y-5 rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 border-b border-bordercolor pb-3">
+                    <div>
+                      <h2 className="font-editorial text-xl font-bold text-forest">{editingVoucherId ? 'Edit Voucher' : 'Tambah Voucher Baru'}</h2>
+                      <p className="mt-1 text-xs text-mutedgray">Foto kartu voucher diunggah ke Supabase Storage; data diskon dan validitas disimpan ke tabel offers.</p>
+                    </div>
+                    <button type="button" onClick={() => { setVoucherEditorOpen(false); setVoucherError(null); }} className="rounded-lg p-2 text-mutedgray hover:bg-ivory-100" aria-label="Tutup formulir voucher"><X className="h-4 w-4" /></button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="block text-xs font-semibold text-forest">Nama voucher / promo *
+                      <input required maxLength={120} value={voucherDraft.title} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, title: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: Promo Liburan Keluarga" />
+                    </label>
+                    <label className="block text-xs font-semibold text-forest">Kode unik voucher *
+                      <input required minLength={3} maxLength={32} pattern="[A-Za-z0-9_-]{3,32}" value={voucherDraft.code} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, code: event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 font-mono text-sm font-normal uppercase" placeholder="LEMEDINA20" />
+                      <span className="mt-1 block font-normal text-mutedgray">3–32 karakter; setiap voucher harus memiliki kode berbeda.</span>
+                    </label>
+                    <label className="block text-xs font-semibold text-forest md:col-span-2">Tagline / subjudul kartu
+                      <input maxLength={240} value={voucherDraft.tagline} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, tagline: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Contoh: Penawaran khusus untuk tamu akhir pekan" />
+                    </label>
+                    <label className="block text-xs font-semibold text-forest md:col-span-2">Deskripsi promo
+                      <textarea rows={3} maxLength={2000} value={voucherDraft.description} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, description: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" placeholder="Jelaskan syarat dan ketentuan promo untuk pelanggan." />
+                    </label>
+                    <label className="block text-xs font-semibold text-forest">Potongan harga (%) *
+                      <input required type="number" min={1} max={100} step={1} value={voucherDraft.discountPercentage} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, discountPercentage: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      <span className="mt-1 block font-normal text-mutedgray">Diskon dihitung pada total tarif kamar hasil kalkulasi database.</span>
+                    </label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-semibold text-forest">Berlaku mulai *
+                        <input required type="date" value={voucherDraft.validFrom} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, validFrom: event.target.value, validTo: draft.validTo < event.target.value ? event.target.value : draft.validTo }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                      <label className="block text-xs font-semibold text-forest">Berlaku sampai *
+                        <input required type="date" min={voucherDraft.validFrom} value={voucherDraft.validTo} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, validTo: event.target.value }))} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal" />
+                      </label>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-xs font-semibold text-forest">Foto voucher untuk kartu website (JPG, PNG, WebP, AVIF; maks. 4 MB) {editingVoucherId ? '' : '*'}</label>
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" required={!editingVoucherId && !voucherDraft.imageFile} onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        setVoucherDraft((draft) => ({ ...draft, imageFile: file, imagePreviewUrl: file ? URL.createObjectURL(file) : '' }));
+                      }} className="block w-full rounded-lg border border-bordercolor bg-white px-3 py-2 text-xs font-normal file:mr-3 file:rounded file:border-0 file:bg-ivory-200 file:px-3 file:py-1.5" />
+                      {(voucherDraft.imagePreviewUrl || voucherDraft.existingImageUrl) ? (
+                        <div className="flex items-start gap-3">
+                          <img src={voucherDraft.imagePreviewUrl || voucherDraft.existingImageUrl} alt="Pratinjau foto voucher" className="h-28 w-44 rounded-lg border border-bordercolor object-cover" />
+                          <p className="max-w-sm text-xs text-mutedgray">Foto ini akan muncul pada kartu voucher di website pelanggan. Memilih foto baru akan mengganti foto lama.</p>
+                        </div>
+                      ) : (
+                        <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-bordercolor bg-ivory-50 text-xs text-mutedgray"><ImagePlus className="mr-2 h-4 w-4" /> Pratinjau foto voucher akan muncul di sini.</div>
+                      )}
+                    </div>
+                    <label className="inline-flex items-center gap-2 text-xs font-medium text-forest md:col-span-2"><input type="checkbox" checked={voucherDraft.isActive} onChange={(event) => setVoucherDraft((draft) => ({ ...draft, isActive: event.target.checked }))} /> Aktifkan dan tampilkan kepada pelanggan selama masa berlaku</label>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-bordercolor pt-4">
+                    <button type="button" onClick={() => setVoucherEditorOpen(false)} className="rounded-lg border border-bordercolor bg-white px-4 py-2.5 text-xs font-semibold text-forest">Batal</button>
+                    <button type="submit" disabled={!canManageContent || voucherSaving} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-5 py-2.5 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50">
+                      {voucherSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {voucherSaving ? 'Menyimpan...' : 'Simpan Voucher'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {voucherLoading && managedVouchers.length === 0 ? (
+                <div className="rounded-lg border border-bordercolor bg-white p-8 text-center text-sm text-mutedgray"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Memuat voucher dari Supabase...</div>
+              ) : managedVouchers.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-bordercolor bg-white p-10 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ivory-100 text-forest"><Percent className="h-6 w-6" /></div>
+                  <h2 className="font-editorial text-xl font-bold text-forest">Belum ada voucher</h2>
+                  <p className="mx-auto mt-2 max-w-xl text-sm text-mutedgray">Voucher demo lama sudah tidak ditampilkan. Tambahkan voucher resmi setelah kode, diskon, foto, dan tanggalnya disetujui manajemen hotel.</p>
+                  <button type="button" disabled={!canManageContent} onClick={openNewVoucherEditor} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-ivory disabled:opacity-50"><Plus className="h-4 w-4" /> Tambah Voucher Pertama</button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                  {managedVouchers.map((voucher) => (
+                    <article key={voucher.id} className="overflow-hidden rounded-xl border border-bordercolor bg-white shadow-sm">
+                      <div className="relative h-48 bg-forest-900">
+                        {voucher.image_url ? <img src={voucher.image_url} alt={voucher.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-gold-300"><ImagePlus className="h-10 w-10" /></div>}
+                        <span className={`absolute right-3 top-3 rounded px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${voucher.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>{voucher.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                        <span className="absolute bottom-3 left-3 rounded bg-gold px-3 py-1.5 text-xs font-bold text-charcoal">Diskon {voucher.discount_percentage}%</span>
+                      </div>
+                      <div className="space-y-3 p-5">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <h2 className="font-editorial text-xl font-bold text-forest">{voucher.title}</h2>
+                            {voucher.tagline && <p className="mt-1 text-xs italic text-mutedgray">{voucher.tagline}</p>}
+                          </div>
+                          <code className="w-fit rounded border border-gold/50 bg-gold-50 px-2.5 py-1.5 font-mono text-xs font-bold text-forest">{voucher.code}</code>
+                        </div>
+                        {voucher.description && <p className="text-sm leading-relaxed text-mutedgray">{voucher.description}</p>}
+                        <p className="text-xs text-mutedgray">Berlaku {formatDate(voucher.valid_from)} s.d. {formatDate(voucher.valid_to)}</p>
+                        <div className="flex flex-wrap gap-2 border-t border-bordercolor pt-3">
+                          <button type="button" disabled={!canManageContent} onClick={() => openEditVoucherEditor(voucher)} className="inline-flex items-center gap-1 rounded-lg border border-bordercolor bg-white px-3 py-2 text-xs font-semibold text-forest disabled:opacity-50"><Pencil className="h-3.5 w-3.5" /> Edit</button>
+                          <button type="button" disabled={!canManageContent} onClick={() => void toggleVoucherActive(voucher)} className={`rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50 ${voucher.is_active ? 'border border-amber-200 bg-amber-50 text-amber-800' : 'bg-emerald-700 text-white'}`}>{voucher.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          <button type="button" disabled={!canManageContent || voucherDeletingId === voucher.id} onClick={() => void handleDeleteVoucher(voucher)} className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> {voucherDeletingId === voucher.id ? 'Menghapus...' : 'Hapus'}</button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 5: RESTAURANT MENU CMS */}
           {activeTab === 'menu' && (
             <div className="space-y-6 animate-fadeIn">
@@ -1919,6 +2435,7 @@ export default function AdminDashboardClient({
                   <span>Pengaturan operasional hotel berhasil diperbarui.</span>
                 </div>
               )}
+              {settingsError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">{settingsError}</div>}
 
               <div className="bg-ivory rounded-xl p-6 sm:p-8 border border-bordercolor shadow-sm space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1995,16 +2512,145 @@ export default function AdminDashboardClient({
 
                 <div className="pt-4 flex justify-end">
                   <button
-                    onClick={() => {
-                      setPengaturanSuccess(true);
-                      setTimeout(() => setPengaturanSuccess(false), 3000);
-                    }}
-                    className="px-6 py-2.5 rounded bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold transition-all shadow"
+                    type="button"
+                    onClick={() => void handleSaveSiteSettings()}
+                    disabled={settingsSaving}
+                    className="px-6 py-2.5 rounded bg-forest hover:bg-forest-900 text-ivory text-xs uppercase tracking-widest font-semibold transition-all shadow disabled:opacity-60"
                   >
-                    Simpan Pengaturan Operasional
+                    {settingsSaving ? 'Menyimpan ke Supabase...' : 'Simpan Pengaturan Operasional'}
                   </button>
                 </div>
               </div>
+
+              {/* Profile that identifies the signed-in staff member on the panel */}
+              <section className="bg-white rounded-xl p-6 sm:p-8 border border-bordercolor shadow-sm space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-forest/5 p-2 text-forest"><UserCircle className="h-5 w-5" /></div>
+                  <div>
+                    <h2 className="font-editorial text-xl font-bold text-forest">Profil Admin yang Sedang Login</h2>
+                    <p className="mt-1 text-xs text-mutedgray">Nama dan foto ini muncul di bagian atas panel. Setiap staf harus memakai akun masing-masing untuk audit sif.</p>
+                  </div>
+                </div>
+                {adminProfileError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{adminProfileError}</div>}
+                {adminProfileMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">{adminProfileMessage}</div>}
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-[160px_1fr]">
+                  <div className="flex flex-col items-center gap-3">
+                    {adminProfileAvatar ? <img src={adminProfileAvatar} alt="Foto profil admin" className="h-28 w-28 rounded-full border-4 border-ivory object-cover shadow-sm" /> : <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-dashed border-bordercolor bg-ivory text-mutedgray"><UserCircle className="h-14 w-14" /></div>}
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-bordercolor bg-ivory px-3 py-2 text-xs font-semibold text-forest hover:bg-ivory-100">
+                      <Camera className="h-4 w-4" /> Ganti Foto
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        setAdminProfileFile(file);
+                        if (file) setAdminProfileAvatar(URL.createObjectURL(file));
+                      }} />
+                    </label>
+                    <span className="text-center text-[10px] text-mutedgray">JPG, PNG, WebP · maks. 4 MB</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-charcoal">Nama yang Ditampilkan</label>
+                      <input value={adminProfileName} onChange={(event) => setAdminProfileName(event.target.value)} maxLength={120} className="w-full rounded-lg border border-bordercolor bg-ivory-50 px-3 py-2.5 text-sm" placeholder="Nama admin/resepsionis" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-charcoal">Email Akun</label>
+                      <input value={currentUser?.email || ''} readOnly className="w-full rounded-lg border border-bordercolor bg-gray-100 px-3 py-2.5 text-sm text-mutedgray" />
+                      <p className="mt-1 text-[10px] text-mutedgray">Email login dikelola oleh Supabase Auth. Untuk mengubah email, lakukan melalui alur perubahan akun yang terverifikasi.</p>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-charcoal">Nomor Telepon Staf (opsional)</label>
+                      <input value={adminProfilePhone} onChange={(event) => setAdminProfilePhone(event.target.value)} maxLength={40} className="w-full rounded-lg border border-bordercolor bg-ivory-50 px-3 py-2.5 text-sm" placeholder="Nomor kontak internal" />
+                    </div>
+                    <div className="flex justify-end">
+                      <button type="button" onClick={() => void saveAdminProfile()} disabled={adminProfileSaving || adminProfileLoading} className="inline-flex items-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow disabled:opacity-60">
+                        <Save className="h-4 w-4" /> {adminProfileSaving ? 'Menyimpan Profil...' : 'Simpan Profil & Foto'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Owner-only user management and shift/audit trail */}
+              {currentUser?.role === 'super_admin' && currentRole === 'super_admin' && (
+                <section className="space-y-5 rounded-xl border border-bordercolor bg-white p-6 shadow-sm sm:p-8">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg bg-forest/5 p-2 text-forest"><Users className="h-5 w-5" /></div>
+                    <div className="flex-1">
+                      <h2 className="font-editorial text-xl font-bold text-forest">Akun Admin & Catatan Pergantian Sif</h2>
+                      <p className="mt-1 text-xs text-mutedgray">Buat akun terpisah untuk petugas pagi, siang, atau malam. Riwayat login, logout, perubahan penting, dan alamat IP disimpan untuk membantu pemeriksaan kejadian.</p>
+                    </div>
+                    <button type="button" onClick={() => void loadAdminAccountsAndAudit()} disabled={adminAccountsLoading} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor px-3 py-2 text-xs font-semibold text-forest disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${adminAccountsLoading ? 'animate-spin' : ''}`} /> Segarkan</button>
+                  </div>
+                  {adminAccountsError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{adminAccountsError}</div>}
+                  {adminAccountsMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700">{adminAccountsMessage}</div>}
+
+                  <form onSubmit={createAdminAccount} className="grid grid-cols-1 gap-3 rounded-xl border border-bordercolor bg-ivory-50 p-4 md:grid-cols-2">
+                    <div className="md:col-span-2 flex items-center gap-2 text-sm font-bold text-forest"><UserPlus className="h-4 w-4" /> Tambah Akun Admin / Staf</div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold">Nama lengkap *</label>
+                      <input required value={newAdminFullName} onChange={(event) => setNewAdminFullName(event.target.value)} maxLength={120} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm" placeholder="Nama petugas" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold">Email login *</label>
+                      <input type="email" required value={newAdminEmail} onChange={(event) => setNewAdminEmail(event.target.value)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm" placeholder="petugas@hotel.id" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold">Kata sandi awal * (min. 10 karakter)</label>
+                      <input type="password" required minLength={10} value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} autoComplete="new-password" className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm" placeholder="Buat kata sandi sementara" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold">Hak akses</label>
+                      <select value={newAdminRole} onChange={(event) => setNewAdminRole(event.target.value as Role)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm">
+                        <option value="admin">Admin Operasional — kamar, tarif, reservasi, menu, pengaturan</option>
+                        <option value="reservation_staff">Resepsionis — reservasi & operasional meja depan</option>
+                        <option value="content_editor">Editor Konten — menu & konten</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="max-w-xl text-[10px] leading-5 text-mutedgray">Akun dibuat melalui Supabase Auth. Sampaikan kata sandi awal secara pribadi, minta staf menggantinya sesuai prosedur internal, dan jangan menggunakan satu akun bersama.</p>
+                      <button type="submit" disabled={adminAccountSaving} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-forest px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-60"><UserPlus className="h-4 w-4" /> {adminAccountSaving ? 'Membuat Akun...' : 'Buat Akun'}</button>
+                    </div>
+                  </form>
+
+                  <div>
+                    <h3 className="mb-3 text-sm font-bold text-forest">Daftar Akun Terdaftar</h3>
+                    {adminAccountsLoading && managedAdminAccounts.length === 0 ? <div className="rounded-lg bg-ivory-50 p-6 text-center text-xs text-mutedgray">Memuat akun admin dari Supabase...</div> : managedAdminAccounts.length === 0 ? <div className="rounded-lg bg-ivory-50 p-6 text-center text-xs text-mutedgray">Belum ada akun admin yang dapat ditampilkan.</div> : (
+                      <div className="space-y-3">
+                        {managedAdminAccounts.map((account) => (
+                          <div key={account.auth_user_id || account.id} className="flex flex-col gap-3 rounded-xl border border-bordercolor p-4 sm:flex-row sm:items-center">
+                            {account.avatar_url ? <img src={account.avatar_url} alt={account.full_name} className="h-12 w-12 rounded-full border border-bordercolor object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ivory text-forest"><UserCircle className="h-7 w-7" /></div>}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2"><strong className="text-sm text-forest">{account.full_name}</strong><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${account.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}`}>{account.is_active ? 'AKTIF' : 'NONAKTIF'}</span></div>
+                              <p className="mt-1 text-xs text-mutedgray">{account.email} · {(account.roles || []).map((role) => role.replace(/_/g, ' ')).join(', ') || 'Tanpa role'}</p>
+                              <p className="mt-1 text-[10px] text-mutedgray">Login terakhir: {formatAdminAuditTime(account.last_login_at)}{account.current_shift ? ` · Sif ${account.current_shift}` : ''} · {account.session_state}</p>
+                              <p className="text-[10px] text-mutedgray">Aktivitas terakhir: {formatAdminAuditTime(account.last_activity_at)}</p>
+                            </div>
+                            <button type="button" disabled={account.auth_user_id === currentUser?.id || account.primary_role === 'super_admin'} onClick={() => void toggleAdminAccount(account)} className={`rounded-lg border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${account.is_active ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}>{account.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-forest" /><h3 className="text-sm font-bold text-forest">Audit Aktivitas Admin Terbaru</h3></div>
+                    {adminAuditLogs.length === 0 ? <div className="rounded-lg bg-ivory-50 p-4 text-xs text-mutedgray">Log akan muncul setelah admin login atau melakukan perubahan berikutnya. Aktivitas sebelum pemasangan fitur ini tidak tersedia secara retrospektif.</div> : (
+                      <div className="max-h-[520px] overflow-auto rounded-lg border border-bordercolor">
+                        <table className="w-full min-w-[720px] text-left text-xs">
+                          <thead className="sticky top-0 bg-ivory text-[10px] uppercase tracking-wider text-mutedgray"><tr><th className="p-3">Waktu (WIB)</th><th className="p-3">Admin</th><th className="p-3">Aktivitas</th><th className="p-3">Keterangan</th><th className="p-3">IP</th></tr></thead>
+                          <tbody className="divide-y divide-bordercolor bg-white">
+                            {adminAuditLogs.map((log) => {
+                              const shift = typeof log.details?.shift_name === 'string' ? String(log.details.shift_name) : '';
+                              const changed = Array.isArray(log.details?.changed_fields) ? (log.details?.changed_fields as unknown[]).map(String).join(', ') : '';
+                              const target = log.target_type === 'site_settings' ? 'Pengaturan hotel' : log.target_id || log.target_type || '—';
+                              return <tr key={log.id}><td className="whitespace-nowrap p-3 text-mutedgray">{formatAdminAuditTime(log.created_at)}</td><td className="p-3"><strong className="text-forest">{log.actor_name}</strong><span className="block text-[10px] text-mutedgray">{log.actor_email}</span><span className="block text-[10px] text-mutedgray">{log.actor_role.replace(/_/g, ' ')}</span></td><td className="p-3 font-semibold text-forest">{auditActionLabel(log.action)}{shift && <span className="mt-1 block text-[10px] font-normal text-mutedgray">Sif {shift}</span>}</td><td className="max-w-[240px] p-3 text-mutedgray">{changed || target}{log.details?.new_admin_email ? <span className="block">Akun baru: {String(log.details.new_admin_email)}</span> : null}{log.details?.target_email ? <span className="block">Target: {String(log.details.target_email)}</span> : null}</td><td className="p-3 text-mutedgray">{log.ip_address || '—'}</td></tr>;
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </main>

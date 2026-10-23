@@ -350,34 +350,7 @@ export const initialFacilities: Facility[] = [
   },
 ];
 
-export const initialOffers: Offer[] = [
-  {
-    id: 'off-1',
-    title: 'Paket Liburan Romantis Berdua',
-    code: 'ROMANCE26',
-    tagline: 'Termasuk makan malam romantis berdua & sesi spa relaksasi',
-    description:
-      'Pesan penginapan minimal 3 malam di tipe kamar pilihan untuk menikmati layanan antar-jemput gratis, sesi relaksasi spa berdua selama 60 menit, dan makan malam istimewa di pelataran hotel.',
-    discount_percentage: 15,
-    valid_from: '2026-10-01',
-    valid_to: '2027-03-31',
-    image_url: 'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=800&q=80',
-    is_active: true,
-  },
-  {
-    id: 'off-2',
-    title: 'Paket Liburan Akhir Pekan Singkawang',
-    code: 'ATLASWINTER',
-    tagline: 'Diskon tarif spesial untuk durasi menginap 4 malam atau lebih',
-    description:
-      'Nikmati suasana tenang dan nyaman dengan potongan harga 20% untuk semua tipe kamar, lengkap dengan sarapan pagi harian serta panduan tur keliling wisata budaya Singkawang.',
-    discount_percentage: 20,
-    valid_from: '2026-11-01',
-    valid_to: '2027-02-28',
-    image_url: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?auto=format&fit=crop&w=800&q=80',
-    is_active: true,
-  },
-];
+export const initialOffers: Offer[] = [];
 
 export const initialGaleriImages: GaleriImage[] = [
   {

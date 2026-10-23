@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const check_out = String(body.check_out || '').trim();
     const room_type_id = sanitizeString(body.room_type_id, 64);
     const special_requests = body.special_requests ? sanitizeString(body.special_requests, 500) : undefined;
-    const promo_code = body.promo_code ? sanitizeString(body.promo_code, 20).toUpperCase() : undefined;
+    const promo_code = body.promo_code ? sanitizeString(body.promo_code, 32).toUpperCase() : undefined;
     const payment_method = body.payment_method === undefined ? 'pay_at_hotel' : String(body.payment_method);
 
     // Online payment is deliberately disabled until Midtrans merchant credentials and
