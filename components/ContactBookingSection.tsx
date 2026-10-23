@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RoomType, Reservation } from '../lib/types';
+import { RoomType, Reservation, ReservationPaymentMethod } from '../lib/types';
 import { formatPrice } from '../lib/utils';
 import {
   Calendar,
@@ -15,6 +15,8 @@ import {
   MessageSquare,
   AlertCircle,
   Tag,
+  Wallet,
+  QrCode,
 } from 'lucide-react';
 
 interface KontakBookingSectionProps {
@@ -30,10 +32,20 @@ export default function KontakBookingSection({
   appliedPromoCode,
   whatsappNumber,
 }: KontakBookingSectionProps) {
-  // Booking Form State
-  const todayStr = '2026-10-22';
-  const tomorrowStr = '2026-10-24';
+  // Booking dates default to the visitor's local date, not a fixed historical date.
+  const formatDateInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const todayStr = formatDateInput(today);
+  const tomorrowStr = formatDateInput(tomorrow);
 
+  // Booking Form State
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
   const [adults, setDewasa] = useState(2);
@@ -47,6 +59,7 @@ export default function KontakBookingSection({
   const [guestEmail, setTamuEmail] = useState('');
   const [guestPhone, setTamuPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<ReservationPaymentMethod>('pay_at_hotel');
 
   // UI state
   const [isKirimting, setIsKirimting] = useState(false);
@@ -71,10 +84,12 @@ export default function KontakBookingSection({
     return diff > 0 ? diff : 1;
   };
   const nights = calcNights();
-  const baseRateCents = selectedRoom ? selectedRoom.base_price_cents : 42000;
+  const baseRateCents = selectedRoom ? selectedRoom.base_price_cents : 0;
   const rawSubtotalCents = baseRateCents * nights;
-  const discountRate = promoCode.toUpperCase() === 'ATLASWINTER' ? 0.2 : promoCode.toUpperCase() === 'ROMANCE26' ? 0.15 : 0;
-  const discountCents = Math.round(rawSubtotalCents * discountRate);
+  // Promo discounts must be validated by the database before being shown as a real discount.
+  // Promo integration is not enabled in this workflow stage, so do not display client-only discounts.
+  const discountRate = 0;
+  const discountCents = 0;
   const estimatedTotalCents = rawSubtotalCents - discountCents;
 
   const handleBookingKirim = async (e: React.FormEvent) => {
@@ -88,6 +103,11 @@ export default function KontakBookingSection({
 
     if (!guestName || !guestEmail || !guestPhone) {
       setErrorMsg('Mohon lengkapi nama, email, dan nomor telepon Anda.');
+      return;
+    }
+
+    if (promoCode.trim()) {
+      setErrorMsg('Kode promo belum aktif pada alur pemesanan online. Kosongkan kode promo atau hubungi staf hotel.');
       return;
     }
 
@@ -108,6 +128,7 @@ export default function KontakBookingSection({
           room_type_id: selectedRoomTypeId,
           special_requests: specialRequests,
           promo_code: promoCode,
+          payment_method: paymentMethod,
         }),
       });
 
@@ -166,7 +187,7 @@ export default function KontakBookingSection({
                 {completedBooking.reservation_code}
               </span>
               <span className="text-[11px] text-ivory-300 mt-2 block">
-                Konfirmasi pemesanan telah dikirimkan ke alamat email {completedBooking.guest_email}
+                Simpan kode reservasi ini. Anda dapat menghubungi staf hotel melalui WhatsApp untuk konfirmasi.
               </span>
             </div>
 
@@ -188,9 +209,13 @@ export default function KontakBookingSection({
               <div>
                 <span className="text-mutedgray block">Total Biaya</span>
                 <strong className="text-gold-700 font-bold">
-                  {formatPrice(completedBooking.total_amount_cents / 100, completedBooking.currency)}
+                  {formatPrice(completedBooking.total_amount_cents / 100, completedBooking.currency || 'IDR')}
                 </strong>
               </div>
+            </div>
+            <div className="max-w-md mx-auto mb-8 rounded-lg border border-gold/40 bg-ivory-100 p-4 text-left">
+              <p className="text-xs font-bold uppercase tracking-wider text-forest">Metode Pembayaran: Bayar di Hotel</p>
+              <p className="mt-1 text-xs text-mutedgray">Status pembayaran: Belum Dibayar. Silakan selesaikan pembayaran di resepsionis hotel. Reservasi dan pembayaran adalah dua status yang berbeda.</p>
             </div>
 
             {/* Direct WhatsApp Handoff CTA */}
@@ -323,7 +348,7 @@ export default function KontakBookingSection({
                             {room.name}
                           </h4>
                           <span className="font-bold text-xs text-gold-700">
-                            {formatPrice(room.base_price_cents / 100, room.currency)}/malam
+                            {formatPrice(room.base_price_cents / 100, room.currency || 'IDR')}/malam
                           </span>
                         </div>
                         <p className="text-[11px] text-mutedgray mt-0.5 line-clamp-1">{room.tagline}</p>
@@ -415,11 +440,47 @@ export default function KontakBookingSection({
                       />
                       <Tag className="w-3.5 h-3.5 text-gold absolute left-2.5 top-3" />
                     </div>
-                    {discountRate > 0 && (
-                      <span className="text-[10px] text-status-success font-semibold mt-1 block">
-                        ✓ {Math.round(discountRate * 100)}% diskon promo berhasil diterapkan
-                      </span>
-                    )}
+                    <span className="text-[10px] text-mutedgray mt-1 block">
+                      Kode promo belum aktif pada checkout otomatis. Kosongkan kolom ini atau hubungi staf hotel.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4: Payment method. Online is intentionally disabled until gateway setup. */}
+              <div className="mb-8">
+                <h3 className="font-editorial text-xl font-bold text-forest mb-4 pb-2 border-b border-bordercolor flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-gold" />
+                  <span>4. Metode Pembayaran</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className={`relative flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all ${paymentMethod === 'pay_at_hotel' ? 'border-gold bg-gold-50/50 shadow-sm' : 'border-bordercolor bg-ivory'}`}>
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="pay_at_hotel"
+                      checked={paymentMethod === 'pay_at_hotel'}
+                      onChange={() => setPaymentMethod('pay_at_hotel')}
+                      className="mt-1 text-gold focus:ring-gold"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-semibold text-sm text-forest">Bayar di Hotel</h4>
+                        <span className="text-[10px] uppercase tracking-wider rounded-full bg-status-success/10 text-status-success px-2 py-1 font-bold">Tersedia</span>
+                      </div>
+                      <p className="mt-1 text-xs text-mutedgray">Bayar langsung di resepsionis. Status akan tetap Belum Dibayar sampai staf menerima dan mencatat pembayaran.</p>
+                    </div>
+                  </label>
+
+                  <div aria-disabled="true" className="relative flex items-start gap-3 p-4 rounded-lg border border-bordercolor bg-ivory-100 opacity-70">
+                    <input type="radio" name="payment_method_preview" disabled className="mt-1" aria-label="Bayar online belum tersedia" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-semibold text-sm text-forest flex items-center gap-2"><QrCode className="w-4 h-4" /> Bayar Online</h4>
+                        <span className="text-[10px] uppercase tracking-wider rounded-full bg-gray-200 text-gray-700 px-2 py-1 font-bold">Segera tersedia</span>
+                      </div>
+                      <p className="mt-1 text-xs text-mutedgray">QRIS dan transfer bank akan diaktifkan setelah integrasi payment gateway siap.</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -432,16 +493,16 @@ export default function KontakBookingSection({
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="font-editorial text-3xl font-bold text-forest">
-                      {formatPrice(estimatedTotalCents / 100, 'EUR')}
+                      {formatPrice(estimatedTotalCents / 100, selectedRoom?.currency || 'IDR')}
                     </span>
                     {discountCents > 0 && (
                       <span className="text-xs text-mutedgray line-through">
-                        {formatPrice(rawSubtotalCents / 100, 'EUR')}
+                        {formatPrice(rawSubtotalCents / 100, selectedRoom?.currency || 'IDR')}
                       </span>
                     )}
                   </div>
                   <span className="text-[11px] text-mutedgray block mt-0.5">
-                    *Sudah termasuk pajak dan sarapan. Pembayaran dapat diselesaikan saat kedatangan.
+                    *Total akhir dihitung server saat reservasi. Pembayaran dapat diselesaikan di resepsionis hotel.
                   </span>
                 </div>
 

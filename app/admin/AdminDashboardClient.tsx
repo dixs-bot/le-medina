@@ -86,6 +86,9 @@ export default function AdminDashboardClient({
 
   // Reservasi state
   const [reservations, setReservasi] = useState<Reservation[]>(initialReservasi);
+  const [metrics, setMetrics] = useState<AdminMetrics>(initialMetrics);
+  const [isRefreshingMetrics, setIsRefreshingMetrics] = useState(false);
+  const [updatingPaymentCode, setUpdatingPaymentCode] = useState<string | null>(null);
   const [resCari, setResCari] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
@@ -102,6 +105,23 @@ export default function AdminDashboardClient({
   const [reservasiError, setReservasiError] = useState<string | null>(null);
   const [updatingReservationCode, setUpdatingReservationCode] = useState<string | null>(null);
   const [statusUpdateMessage, setStatusUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const refreshDashboardMetrics = async () => {
+    setIsRefreshingMetrics(true);
+    try {
+      const response = await fetch('/api/admin/metrics', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.metrics) {
+        throw new Error(payload?.error || `Gagal memperbarui ringkasan (HTTP ${response.status}).`);
+      }
+      setMetrics(payload.metrics as AdminMetrics);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal memperbarui ringkasan dashboard.';
+      setStatusUpdateMessage({ type: 'error', text: message });
+    } finally {
+      setIsRefreshingMetrics(false);
+    }
+  };
 
   const fetchLiveReservations = async () => {
     setIsLoadingReservasi(true);
@@ -188,6 +208,7 @@ export default function AdminDashboardClient({
           persistedStatus === 'checked_out' ? 'Sudah Check-Out' : 'Dibatalkan'
         }.`,
       });
+      await refreshDashboardMetrics();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal memperbarui status reservasi.';
       console.error('[admin/reservations] Status update failed:', message);
@@ -211,6 +232,51 @@ export default function AdminDashboardClient({
       setStatusUpdateMessage({ type: 'error', text: message });
     } finally {
       setUpdatingReservationCode(null);
+    }
+  };
+
+  const handleReceivePayment = async (reservation: Reservation) => {
+    if (!canManageReservasi || updatingPaymentCode) return;
+    if (reservation.payment_status === 'paid') return;
+
+    const confirmed = window.confirm(
+      `Konfirmasi bahwa pembayaran penuh sebesar ${formatPrice(reservation.total_amount_cents / 100, 'IDR')} untuk ${reservation.reservation_code} benar-benar sudah diterima di hotel?\n\nTindakan ini akan menandai pembayaran LUNAS dan memengaruhi total pendapatan.`
+    );
+    if (!confirmed) return;
+
+    const receiptReference = window.prompt('Nomor kuitansi/referensi pembayaran (opsional):', '') || '';
+    setUpdatingPaymentCode(reservation.reservation_code);
+    setStatusUpdateMessage(null);
+
+    try {
+      const response = await fetch('/api/admin/payments/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          reservation_code: reservation.reservation_code,
+          receipt_reference: receiptReference.trim(),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Pembayaran gagal dicatat (HTTP ${response.status}).`);
+      }
+
+      setStatusUpdateMessage({
+        type: 'success',
+        text: `Pembayaran ${reservation.reservation_code} berhasil dicatat sebagai LUNAS.`,
+      });
+      await fetchLiveReservations();
+      await refreshDashboardMetrics();
+      if (selectedRes?.reservation_code === reservation.reservation_code) {
+        setSelectedRes((previous) => previous ? { ...previous, payment_status: 'paid', paid_at: payload.payment?.paid_at || new Date().toISOString() } : previous);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal mencatat pembayaran.';
+      setStatusUpdateMessage({ type: 'error', text: message });
+    } finally {
+      setUpdatingPaymentCode(null);
     }
   };
 
@@ -397,13 +463,24 @@ export default function AdminDashboardClient({
           {/* TAB 1: OVERVIEW / METRICS */}
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-fadeIn">
-              <div>
-                <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Ringkasan Operasional Eksekutif
-                </h1>
-                <p className="text-xs text-mutedgray">
-                  Pemantauan tingkat okupansi, pendapatan, dan alur reservasi langsung secara real-time.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                  <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
+                    Ringkasan Operasional Eksekutif
+                  </h1>
+                  <p className="text-xs text-mutedgray">
+                    Pendapatan berasal dari pembayaran lunas yang telah diverifikasi di database.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { void refreshDashboardMetrics(); void fetchLiveReservations(); }}
+                  disabled={isRefreshingMetrics || isLoadingReservasi}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-bordercolor bg-ivory px-3 py-2 text-xs font-semibold text-forest hover:bg-ivory-100 disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingMetrics ? 'animate-spin' : ''}`} />
+                  {isRefreshingMetrics ? 'Memperbarui...' : 'Segarkan Ringkasan'}
+                </button>
               </div>
 
               {/* KPI Cards Grid */}
@@ -416,7 +493,7 @@ export default function AdminDashboardClient({
                     <Clock className="w-4 h-4 text-status-warning" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-status-warning">
-                    {initialMetrics.pendingReservasi}
+                    {metrics.pendingReservasi}
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
                     Memerlukan tindak lanjut dan konfirmasi staf
@@ -431,10 +508,10 @@ export default function AdminDashboardClient({
                     <CheckCircle className="w-4 h-4 text-status-success" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-forest">
-                    {initialMetrics.confirmedReservasi}
+                    {metrics.confirmedReservasi}
                   </div>
                   <span className="text-[11px] text-status-success font-medium mt-1 block">
-                    Total: {initialMetrics.totalReservasi} reservasi langsung
+                    Total: {metrics.totalReservasi} reservasi langsung
                   </span>
                 </div>
 
@@ -446,7 +523,7 @@ export default function AdminDashboardClient({
                     <Percent className="w-4 h-4 text-gold" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-forest">
-                    {initialMetrics.occupancyRatePercentage}%
+                    {metrics.occupancyRatePercentage}%
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
                     Dari total 7 unit kamar hotel
@@ -461,10 +538,10 @@ export default function AdminDashboardClient({
                     <TrendingUp className="w-4 h-4 text-status-success" />
                   </div>
                   <div className="font-editorial text-3xl font-bold text-forest">
-                    {formatPrice(initialMetrics.totalRevenueCents / 100, 'IDR')}
+                    {formatPrice(metrics.totalRevenueCents / 100, 'IDR')}
                   </div>
                   <span className="text-[11px] text-mutedgray mt-1 block">
-                    Pendapatan dari pemesanan web langsung
+                    Total pembayaran yang sudah lunas dan terverifikasi
                   </span>
                 </div>
               </div>
@@ -689,8 +766,30 @@ export default function AdminDashboardClient({
                               Kamar: {res.assigned_room_number}
                             </span>
                           </td>
-                          <td className="p-4 font-bold text-gold-700">
-                            {formatPrice(res.total_amount_cents / 100, res.currency)}
+                          <td className="p-4">
+                            <div className="font-bold text-gold-700">
+                              {formatPrice(res.total_amount_cents / 100, res.currency || 'IDR')}
+                            </div>
+                            <div className="mt-1 text-[10px] font-semibold">
+                              {res.payment_status === 'paid' ? (
+                                <span className="text-emerald-700">LUNAS</span>
+                              ) : res.payment_status === 'pending' ? (
+                                <span className="text-amber-700">MENUNGGU PEMBAYARAN</span>
+                              ) : (
+                                <span className="text-gray-500">BELUM DIBAYAR</span>
+                              )}
+                            </div>
+                            {canManageReservasi && res.payment_method === 'pay_at_hotel' && res.payment_status !== 'paid' && res.status !== 'cancelled' && (
+                              <button
+                                type="button"
+                                onClick={() => void handleReceivePayment(res)}
+                                disabled={updatingPaymentCode === res.reservation_code}
+                                className="mt-2 inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                              >
+                                {updatingPaymentCode === res.reservation_code ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                                {updatingPaymentCode === res.reservation_code ? 'Menyimpan...' : 'Catat Lunas'}
+                              </button>
+                            )}
                           </td>
                           <td className="p-4">
                             {canManageReservasi ? (

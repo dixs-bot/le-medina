@@ -5,6 +5,8 @@ import {
   RoomRate,
   Reservation,
   ReservationStatus,
+  ReservationPaymentMethod,
+  PaymentStatus,
   RestaurantCategory,
   RestaurantMenuItem,
   Facility,
@@ -134,6 +136,9 @@ function mapReservationRow(row: any, extras?: {
     adults: Number(row.adults || 1),
     children: Number(row.children || 0),
     status: row.status as ReservationStatus,
+    payment_method: (row.payment_method || (row.currency === 'IDR' ? 'pay_at_hotel' : null)) as ReservationPaymentMethod | null,
+    payment_status: (row.payment_status || 'unpaid') as PaymentStatus,
+    paid_at: row.paid_at || null,
     total_amount_cents: Number(row.total_amount_cents || 0),
     currency: row.currency || 'IDR',
     source: row.source || 'direct_web',
@@ -593,6 +598,7 @@ export interface CreateReservationInput {
   room_type_id: string;
   special_requests?: string;
   promo_code?: string;
+  payment_method?: ReservationPaymentMethod;
 }
 
 export async function createAtomicReservation(input: CreateReservationInput): Promise<Reservation> {
@@ -607,7 +613,12 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
     room_type_id,
     special_requests,
     promo_code,
+    payment_method = 'pay_at_hotel',
   } = input;
+
+  if (payment_method !== 'pay_at_hotel') {
+    throw new Error('Pembayaran online belum aktif. Silakan pilih Bayar di Hotel.');
+  }
 
   if (!isValidISODateString(check_in) || !isValidISODateString(check_out) || check_out <= check_in) {
     throw new Error('Tanggal check-in/check-out tidak valid.');
@@ -622,7 +633,7 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
     }
 
     const db = requireAdminDb();
-    const { data, error } = await db.rpc('create_atomic_reservation', {
+    const { data, error } = await db.rpc('create_atomic_reservation_with_payment', {
       p_guest_name: guest_name.trim(),
       p_guest_email: guest_email.trim().toLowerCase(),
       p_guest_phone: guest_phone.trim(),
@@ -632,10 +643,11 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       p_children: children,
       p_room_type_id: room_type_id,
       p_special_requests: special_requests?.trim() || null,
+      p_payment_method: payment_method,
     });
 
     if (error) {
-      logDbError('RPC create_atomic_reservation gagal', error);
+      logDbError('RPC create_atomic_reservation_with_payment gagal', error);
       const message = error.message?.toLowerCase() || '';
       if (message.includes('no rooms') || message.includes('not available')) {
         throw new Error('Mohon maaf, kamar tidak tersedia pada tanggal yang dipilih.');
@@ -677,6 +689,9 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       status: (result.status as ReservationStatus) || 'pending',
       total_amount_cents: Number(result.total_amount_cents || 0),
       currency: String(result.currency || roomType?.currency || 'IDR'),
+      payment_method: (result.payment_method as ReservationPaymentMethod) || payment_method,
+      payment_status: (result.payment_status as PaymentStatus) || 'unpaid',
+      paid_at: typeof result.paid_at === 'string' ? result.paid_at : null,
       source: 'direct_web',
       whatsapp_notified: false,
       created_at: new Date().toISOString(),
@@ -713,6 +728,9 @@ export async function createAtomicReservation(input: CreateReservationInput): Pr
       adults,
       children,
       status: 'pending',
+      payment_method,
+      payment_status: 'unpaid',
+      paid_at: null,
       total_amount_cents: pricing.totalPriceCents,
       currency: pricing.currency,
       source: 'direct_web',
@@ -880,6 +898,9 @@ export async function getReservationByCode(code: string): Promise<Reservation | 
     adults: Number(result.adults || 1),
     children: Number(result.children || 0),
     status: result.status as ReservationStatus,
+    payment_method: (result.payment_method || (result.currency === 'IDR' ? 'pay_at_hotel' : null)) as ReservationPaymentMethod | null,
+    payment_status: (result.payment_status || 'unpaid') as PaymentStatus,
+    paid_at: result.paid_at || null,
     total_amount_cents: Number(result.total_amount_cents || 0),
     currency: result.currency || 'IDR',
     source: 'direct_web',
@@ -1178,9 +1199,31 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   const confirmedReservasi = reservations.filter((reservation) =>
     reservation.status === 'confirmed' || reservation.status === 'checked_in'
   ).length;
-  const totalRevenueCents = reservations
-    .filter((reservation) => reservation.status !== 'cancelled')
-    .reduce((total, reservation) => total + Number(reservation.total_amount_cents || 0), 0);
+  // Revenue is calculated from the verified payment ledger, not from booking
+  // totals or check-out status. amount_idr stores full rupiah (e.g. 150000).
+  let totalRevenueCents = 0;
+  if (isSupabaseConfigured) {
+    const db = requireAdminDb();
+    const { data: paidPayments, error: paymentError } = await db
+      .from('payments')
+      .select('amount_idr')
+      .eq('status', 'paid');
+    if (paymentError) {
+      logDbError('Gagal menghitung pendapatan dari pembayaran lunas', paymentError);
+      throw new Error('Gagal membaca data pembayaran lunas untuk ringkasan pendapatan.');
+    }
+    const totalRevenueIDR = (paidPayments || []).reduce(
+      (total: number, payment: any) => total + Number(payment.amount_idr || 0),
+      0,
+    );
+    // Existing AdminMetrics is named *Cents and UI divides by 100. Keep that
+    // contract while sourcing the number from the IDR ledger.
+    totalRevenueCents = totalRevenueIDR * 100;
+  } else {
+    totalRevenueCents = reservations
+      .filter((reservation) => reservation.payment_status === 'paid' && reservation.status !== 'cancelled')
+      .reduce((total, reservation) => total + Number(reservation.total_amount_cents || 0), 0);
+  }
 
   const totalKamarInventory = rooms.length;
   const today = new Date().toISOString().slice(0, 10);

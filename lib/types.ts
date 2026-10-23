@@ -67,6 +67,9 @@ export interface RoomRate {
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
 
+export type ReservationPaymentMethod = 'pay_at_hotel' | 'midtrans';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'partially_paid' | 'failed' | 'expired' | 'refunded';
+
 export interface Reservation {
   id: string;
   reservation_code: string;
@@ -79,6 +82,10 @@ export interface Reservation {
   adults: number;
   children: number;
   status: ReservationStatus;
+  /** Payment lifecycle is intentionally separate from reservation status. */
+  payment_method?: ReservationPaymentMethod | null;
+  payment_status?: PaymentStatus;
+  paid_at?: string | null;
   total_amount_cents: number;
   currency: string;
   source: string;

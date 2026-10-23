@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
     const room_type_id = sanitizeString(body.room_type_id, 64);
     const special_requests = body.special_requests ? sanitizeString(body.special_requests, 500) : undefined;
     const promo_code = body.promo_code ? sanitizeString(body.promo_code, 20).toUpperCase() : undefined;
+    const payment_method = body.payment_method === undefined ? 'pay_at_hotel' : String(body.payment_method);
+
+    // Online payment is deliberately disabled until Midtrans merchant credentials and
+    // verified webhook handling are configured. Never trust a UI-only disabled state.
+    if (payment_method !== 'pay_at_hotel') {
+      return NextResponse.json(
+        { error: 'Pembayaran online belum tersedia. Silakan pilih Bayar di Hotel.' },
+        { status: 409 }
+      );
+    }
 
     const adults = Math.max(1, Math.min(10, parseInt(body.adults, 10) || 1));
     const children = Math.max(0, Math.min(6, parseInt(body.children, 10) || 0));
@@ -176,24 +186,21 @@ export async function POST(request: NextRequest) {
       room_type_id,
       special_requests,
       promo_code,
+      payment_method: 'pay_at_hotel',
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: 'Reservasi berhasil dibuat dan menunggu konfirmasi kedatangan.',
+        message: 'Reservasi berhasil dibuat. Metode pembayaran: Bayar di Hotel. Status pembayaran: Belum Dibayar.',
         reservation,
       },
       { status: 201 }
     );
   } catch (error: any) {
-    // Validation failures are returned above with explicit 4xx responses.
-    // Failures after attempting the database operation must not be reported as
-    // a client validation error or as a successful reservation.
-    const message = error?.message || 'Terjadi kesalahan saat memproses reservasi Anda.';
     return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
+      { error: error.message || 'Terjadi kesalahan saat memproses reservasi Anda.' },
+      { status: 400 }
     );
   }
 }
