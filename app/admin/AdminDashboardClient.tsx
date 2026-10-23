@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -50,6 +50,8 @@ import {
   UserCircle,
   UserPlus,
   Activity,
+  Download,
+  Printer,
 } from 'lucide-react';
 import type { AdminUser } from '../../lib/auth';
 
@@ -171,6 +173,85 @@ interface AdminAuditEntry {
   created_at: string;
 }
 
+interface RevenuePeriodAmounts {
+  currentDate: string;
+  currentMonth: string;
+  weekStart: string;
+  weekEnd: string;
+  monthStart: string;
+  monthEnd: string;
+  dailyIdr: number;
+  weeklyIdr: number;
+  monthlyIdr: number;
+}
+
+interface MonthlyRevenueRow {
+  id: string;
+  reservation_code: string;
+  guest_name: string;
+  guest_phone: string;
+  adults: number;
+  children: number;
+  check_in: string;
+  check_out: string;
+  room_number: string;
+  room_type: string;
+  status: string;
+  payment_status: string;
+  payment_method: string;
+  source: string;
+  total_idr: number;
+  paid_this_month_idr: number;
+  created_at: string;
+}
+
+interface MonthlyRevenueReport {
+  month: string;
+  revenueIdr: number;
+  totalTransactions: number;
+  guestCount: number;
+  checkIns: number;
+  checkOuts: number;
+  cancelled: number;
+  pending: number;
+  confirmed: number;
+  checkedIn: number;
+  checkedOut: number;
+  paidTransactions: number;
+  unpaidTransactions: number;
+  rows: MonthlyRevenueRow[];
+}
+
+function humanMonth(month: string): string {
+  if (!/^\d{4}-\d{2}$/.test(month)) return month;
+  return new Date(`${month}-01T00:00:00+07:00`).toLocaleDateString('id-ID', {
+    month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
+  });
+}
+
+function reservationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: 'Menunggu Konfirmasi', confirmed: 'Dikonfirmasi',
+    checked_in: 'Sudah Check-In', checked_out: 'Sudah Check-Out', cancelled: 'Dibatalkan',
+  };
+  return labels[status] || status || '—';
+}
+
+function paymentStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    paid: 'Lunas', unpaid: 'Belum Dibayar', pending: 'Menunggu Pembayaran',
+    partially_paid: 'Dibayar Sebagian', failed: 'Gagal', expired: 'Kedaluwarsa', refunded: 'Dikembalikan',
+  };
+  return labels[status] || status || '—';
+}
+
+function escapeReportHtml(value: unknown): string {
+  const entities: Record<string, string> = {
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  };
+  return String(value ?? '').replace(/[&<>"']/g, (char) => entities[char] || char);
+}
+
 function formatAdminAuditTime(value?: string | null): string {
   if (!value) return 'Belum ada';
   const date = new Date(value);
@@ -239,7 +320,120 @@ export default function AdminDashboardClient({
   // Reservasi state
   const [reservations, setReservasi] = useState<Reservation[]>(initialReservasi);
   const [metrics, setMetrics] = useState<AdminMetrics>(initialMetrics);
+  const [revenuePeriods, setRevenuePeriods] = useState<RevenuePeriodAmounts | null>(null);
+  const [monthlyRevenueReport, setMonthlyRevenueReport] = useState<MonthlyRevenueReport | null>(null);
+  const [revenueReportMonth, setRevenueReportMonth] = useState(getJakartaDateISO().slice(0, 7));
+  const [monthlyRevenueOpen, setMonthlyRevenueOpen] = useState(false);
+  const [revenueReportLoading, setRevenueReportLoading] = useState(false);
+  const [revenueReportError, setRevenueReportError] = useState<string | null>(null);
+  const lastSeenRevenueMonth = useRef(getJakartaDateISO().slice(0, 7));
   const [isRefreshingMetrics, setIsRefreshingMetrics] = useState(false);
+
+  const loadRevenueReport = useCallback(async (month: string, silent = false) => {
+    if (!silent) setRevenueReportLoading(true);
+    setRevenueReportError(null);
+    try {
+      const response = await fetch(`/api/admin/revenue-report?month=${encodeURIComponent(month)}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.periods || !payload?.report) {
+        throw new Error(payload?.error || `Gagal memuat laporan pendapatan (HTTP ${response.status}).`);
+      }
+      setRevenuePeriods(payload.periods as RevenuePeriodAmounts);
+      setMonthlyRevenueReport(payload.report as MonthlyRevenueReport);
+      const serverMonth = String(payload.periods.currentMonth || '');
+      // Amounts are derived from payment timestamps, so a new WIB day/week/month
+      // automatically starts at zero without deleting accounting history.
+      if (/^\d{4}-\d{2}$/.test(serverMonth) && serverMonth !== lastSeenRevenueMonth.current) {
+        lastSeenRevenueMonth.current = serverMonth;
+        setRevenueReportMonth(serverMonth);
+      }
+    } catch (error) {
+      setRevenueReportError(error instanceof Error ? error.message : 'Gagal memuat laporan pendapatan.');
+    } finally {
+      if (!silent) setRevenueReportLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRevenueReport(revenueReportMonth);
+    // Polling makes the visible period totals switch after midnight in Asia/Jakarta,
+    // and also refreshes payment figures without requiring a full page reload.
+    const timer = window.setInterval(() => {
+      const liveMonth = getJakartaDateISO().slice(0, 7);
+      if (liveMonth !== lastSeenRevenueMonth.current) {
+        lastSeenRevenueMonth.current = liveMonth;
+        setRevenueReportMonth(liveMonth);
+        void loadRevenueReport(liveMonth, true);
+        return;
+      }
+      void loadRevenueReport(revenueReportMonth, true);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [loadRevenueReport, revenueReportMonth]);
+
+  const downloadMonthlyRevenueCsv = () => {
+    if (!monthlyRevenueReport) return;
+    const report = monthlyRevenueReport;
+    const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows: unknown[][] = [
+      ['LAPORAN TRANSAKSI BULANAN HÔTEL LE MÉDINA'],
+      ['Periode', humanMonth(report.month)],
+      ['Pendapatan pembayaran lunas pada bulan ini (IDR)', report.revenueIdr],
+      ['Total reservasi dalam laporan', report.totalTransactions],
+      ['Jumlah tamu (tidak termasuk reservasi batal)', report.guestCount],
+      ['Check-in tercatat pada bulan ini', report.checkIns],
+      ['Check-out tercatat pada bulan ini', report.checkOuts],
+      ['Reservasi dibatalkan', report.cancelled],
+      ['Reservasi menunggu konfirmasi', report.pending],
+      ['Reservasi dikonfirmasi', report.confirmed],
+      ['Reservasi sudah check-in (status saat ini)', report.checkedIn],
+      ['Reservasi sudah check-out (status saat ini)', report.checkedOut],
+      ['Reservasi lunas', report.paidTransactions],
+      ['Reservasi belum lunas/sebagian', report.unpaidTransactions],
+      [],
+      ['Kode Reservasi', 'Dibuat Pada', 'Nama Tamu', 'Nomor Telepon', 'Dewasa', 'Anak', 'Check-In', 'Check-Out', 'Nomor Kamar', 'Tipe Kamar', 'Status Reservasi', 'Status Pembayaran', 'Metode Pembayaran', 'Sumber', 'Total Reservasi (IDR)', 'Pembayaran Lunas Bulan Ini (IDR)'],
+      ...report.rows.map((item) => [
+        item.reservation_code, item.created_at, item.guest_name, item.guest_phone,
+        item.adults, item.children, item.check_in, item.check_out, item.room_number,
+        item.room_type, reservationStatusLabel(item.status), paymentStatusLabel(item.payment_status),
+        item.payment_method, item.source, item.total_idr, item.paid_this_month_idr,
+      ]),
+    ];
+    const csv = '\uFEFF' + rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `le-medina-laporan-transaksi-${report.month}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const printMonthlyRevenueReport = () => {
+    if (!monthlyRevenueReport) return;
+    const report = monthlyRevenueReport;
+    const printWindow = window.open('', '_blank', 'width=1200,height=850');
+    if (!printWindow) {
+      setRevenueReportError('Jendela cetak diblokir browser. Izinkan pop-up untuk membuka pratinjau PDF.');
+      return;
+    }
+    const bodyRows = report.rows.map((item) => `<tr>
+      <td>${escapeReportHtml(item.reservation_code)}</td><td>${escapeReportHtml(item.guest_name)}</td>
+      <td>${escapeReportHtml(item.check_in)} – ${escapeReportHtml(item.check_out)}</td>
+      <td>${escapeReportHtml(item.room_number)}</td><td>${escapeReportHtml(reservationStatusLabel(item.status))}</td>
+      <td>${escapeReportHtml(paymentStatusLabel(item.payment_status))}</td>
+      <td style="text-align:right">${Math.round(item.total_idr).toLocaleString('id-ID')}</td>
+      <td style="text-align:right">${Math.round(item.paid_this_month_idr).toLocaleString('id-ID')}</td></tr>`).join('');
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Hôtel Le Médina ${escapeReportHtml(report.month)}</title><style>
+      body{font:12px Arial,sans-serif;color:#172a23;padding:24px}h1{font-size:22px;margin:0 0 6px}h2{font-size:16px;margin:24px 0 8px}.sub{color:#666;margin-bottom:18px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}.stats div{border:1px solid #ccc;padding:10px}.stats strong{display:block;font-size:16px;margin-top:6px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:7px 6px;border:1px solid #ccc;text-align:left;vertical-align:top}th{background:#eee;font-size:10px;text-transform:uppercase}td{font-size:10px}@media print{body{padding:0}button{display:none}}
+      </style></head><body><h1>Laporan Transaksi Bulanan — Hôtel Le Médina</h1><div class="sub">Periode: ${escapeReportHtml(humanMonth(report.month))} • Dibuat ${escapeReportHtml(new Date().toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}))} WIB</div>
+      <div class="stats"><div>Pendapatan lunas bulan ini<strong>Rp ${Math.round(report.revenueIdr).toLocaleString('id-ID')}</strong></div><div>Total transaksi reservasi<strong>${report.totalTransactions}</strong></div><div>Check-in / Check-out<strong>${report.checkIns} / ${report.checkOuts}</strong></div><div>Reservasi dibatalkan<strong>${report.cancelled}</strong></div><div>Jumlah tamu non-batal<strong>${report.guestCount}</strong></div><div>Menunggu konfirmasi<strong>${report.pending}</strong></div><div>Dikonfirmasi<strong>${report.confirmed}</strong></div><div>Lunas / belum lunas<strong>${report.paidTransactions} / ${report.unpaidTransactions}</strong></div></div>
+      <h2>Daftar transaksi dan status reservasi</h2><table><thead><tr><th>Kode</th><th>Nama tamu</th><th>Periode inap</th><th>Kamar</th><th>Status reservasi</th><th>Pembayaran</th><th>Total (Rp)</th><th>Lunas bulan ini (Rp)</th></tr></thead><tbody>${bodyRows || '<tr><td colspan="8">Tidak ada transaksi pada periode ini.</td></tr>'}</tbody></table><script>window.onload=()=>{window.focus();window.print();};</script></body></html>`);
+    printWindow.document.close();
+  };
   const [updatingPaymentCode, setUpdatingPaymentCode] = useState<string | null>(null);
   const [resCari, setResCari] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -1391,6 +1585,84 @@ export default function AdminDashboardClient({
                   </span>
                 </div>
               </div>
+
+              {/* Revenue is grouped by Jakarta calendar periods; no historic rows are deleted. */}
+              <section className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+                  <div>
+                    <h2 className="font-editorial text-xl font-bold text-forest">Pendapatan Berdasarkan Periode</h2>
+                    <p className="mt-1 text-xs text-mutedgray">Dihitung dari pembayaran berstatus lunas berdasarkan waktu pembayaran WIB. Nilai periode berganti otomatis tanpa menghapus histori.</p>
+                  </div>
+                  <span className="text-[11px] text-mutedgray">{revenuePeriods ? `Tanggal WIB: ${revenuePeriods.currentDate}` : 'Memuat periode pendapatan...'}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="rounded-xl border border-bordercolor bg-ivory p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">Pendapatan Hari Ini</span><TrendingUp className="h-4 w-4 text-emerald-700" /></div>
+                    <div className="mt-3 font-editorial text-2xl font-bold text-forest">{revenuePeriods ? formatPrice(revenuePeriods.dailyIdr, 'IDR') : '—'}</div>
+                    <p className="mt-1 text-[11px] text-mutedgray">Dari pukul 00.00 sampai 23.59 WIB hari ini.</p>
+                  </div>
+                  <div className="rounded-xl border border-bordercolor bg-ivory p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">Pendapatan Minggu Ini</span><TrendingUp className="h-4 w-4 text-emerald-700" /></div>
+                    <div className="mt-3 font-editorial text-2xl font-bold text-forest">{revenuePeriods ? formatPrice(revenuePeriods.weeklyIdr, 'IDR') : '—'}</div>
+                    <p className="mt-1 text-[11px] text-mutedgray">{revenuePeriods ? `${revenuePeriods.weekStart} s.d. ${revenuePeriods.weekEnd} (Senin–Minggu)` : 'Periode Senin–Minggu WIB.'}</p>
+                  </div>
+                  <button type="button" onClick={() => { const month = getJakartaDateISO().slice(0, 7); setRevenueReportMonth(month); setMonthlyRevenueOpen(true); setRevenueReportError(null); void loadRevenueReport(month); }} className="rounded-xl border border-gold/60 bg-ivory p-5 text-left shadow-sm transition-colors hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold">
+                    <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wider text-mutedgray">Pendapatan Bulan Ini</span><CalendarCheck className="h-4 w-4 text-gold-700" /></div>
+                    <div className="mt-3 font-editorial text-2xl font-bold text-forest">{revenuePeriods ? formatPrice(revenuePeriods.monthlyIdr, 'IDR') : '—'}</div>
+                    <p className="mt-1 text-[11px] text-mutedgray">{revenuePeriods ? `${revenuePeriods.monthStart} s.d. ${revenuePeriods.monthEnd}` : 'Periode tanggal 1 sampai akhir bulan.'}</p>
+                    <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gold-700"><Download className="h-3.5 w-3.5" /> Buka laporan & unduh</span>
+                  </button>
+                </div>
+              </section>
+
+              {monthlyRevenueOpen && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="monthly-revenue-title">
+                  <section className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-bordercolor bg-ivory shadow-2xl">
+                    <header className="flex flex-col gap-3 border-b border-bordercolor bg-forest-950 p-4 text-ivory sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                      <div><h2 id="monthly-revenue-title" className="font-editorial text-xl font-bold sm:text-2xl">Laporan Transaksi Bulanan</h2><p className="mt-1 text-xs text-ivory/70">Ringkasan pendapatan, tamu masuk/keluar, pembatalan, dan status pembayaran.</p></div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[11px] font-semibold" htmlFor="revenue-report-month">Periode</label>
+                        <input id="revenue-report-month" type="month" value={revenueReportMonth} onChange={(event) => { setMonthlyRevenueReport(null); setRevenueReportMonth(event.target.value); }} className="rounded-lg border border-white/20 bg-white px-2.5 py-2 text-xs text-charcoal" />
+                        <button type="button" aria-label="Tutup laporan" onClick={() => setMonthlyRevenueOpen(false)} className="rounded-lg border border-white/20 p-2 hover:bg-white/10"><X className="h-4 w-4" /></button>
+                      </div>
+                    </header>
+                    <div className="overflow-y-auto p-4 sm:p-6">
+                      {revenueReportError && <div role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">{revenueReportError}</div>}
+                      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div><h3 className="font-editorial text-lg font-bold text-forest">{humanMonth(revenueReportMonth)}</h3><p className="text-[11px] text-mutedgray">Pendapatan adalah pembayaran lunas berdasarkan waktu diterima; laporan reservasi memuat semua status terkait periode.</p></div>
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" disabled={!monthlyRevenueReport || revenueReportLoading} onClick={downloadMonthlyRevenueCsv} className="inline-flex items-center gap-2 rounded-lg bg-forest-900 px-3 py-2 text-xs font-bold text-ivory hover:bg-forest-800 disabled:opacity-50"><Download className="h-4 w-4" /> Unduh CSV / Excel</button>
+                          <button type="button" disabled={!monthlyRevenueReport || revenueReportLoading} onClick={printMonthlyRevenueReport} className="inline-flex items-center gap-2 rounded-lg border border-bordercolor bg-white px-3 py-2 text-xs font-bold text-forest hover:bg-ivory-100 disabled:opacity-50"><Printer className="h-4 w-4" /> Cetak / Simpan PDF</button>
+                        </div>
+                      </div>
+                      {revenueReportLoading && !monthlyRevenueReport ? <div className="py-12 text-center text-sm text-mutedgray"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />Memuat laporan dari Supabase...</div> : monthlyRevenueReport ? (
+                        <>
+                          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+                            {[
+                              ['Pendapatan lunas', formatPrice(monthlyRevenueReport.revenueIdr, 'IDR')],
+                              ['Total reservasi', String(monthlyRevenueReport.totalTransactions)],
+                              ['Jumlah tamu', String(monthlyRevenueReport.guestCount)],
+                              ['Check-in', String(monthlyRevenueReport.checkIns)],
+                              ['Check-out', String(monthlyRevenueReport.checkOuts)],
+                              ['Dibatalkan', String(monthlyRevenueReport.cancelled)],
+                              ['Lunas', String(monthlyRevenueReport.paidTransactions)],
+                              ['Belum lunas', String(monthlyRevenueReport.unpaidTransactions)],
+                            ].map(([label, value]) => <div key={label} className="rounded-lg border border-bordercolor bg-white p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-mutedgray">{label}</div><div className="mt-1 break-words font-editorial text-lg font-bold text-forest">{value}</div></div>)}
+                          </div>
+                          <div className="mb-4 flex flex-wrap gap-2 text-[10px] text-mutedgray"><span className="rounded bg-amber-50 px-2 py-1">Menunggu konfirmasi: {monthlyRevenueReport.pending}</span><span className="rounded bg-emerald-50 px-2 py-1">Dikonfirmasi: {monthlyRevenueReport.confirmed}</span><span className="rounded bg-sky-50 px-2 py-1">Sedang menginap: {monthlyRevenueReport.checkedIn}</span><span className="rounded bg-stone-200 px-2 py-1">Sudah check-out: {monthlyRevenueReport.checkedOut}</span></div>
+                          <div className="overflow-x-auto rounded-xl border border-bordercolor bg-white">
+                            <table className="w-full min-w-[1120px] text-left text-[11px]">
+                              <thead className="bg-ivory-200/70 text-[10px] uppercase tracking-wide text-mutedgray"><tr><th className="p-3">Kode / Dibuat</th><th className="p-3">Tamu</th><th className="p-3">Periode inap</th><th className="p-3">Kamar</th><th className="p-3">Status reservasi</th><th className="p-3">Pembayaran</th><th className="p-3 text-right">Total</th><th className="p-3 text-right">Lunas bulan ini</th></tr></thead>
+                              <tbody className="divide-y divide-bordercolor/70">{monthlyRevenueReport.rows.length ? monthlyRevenueReport.rows.map((row) => <tr key={row.id} className="align-top hover:bg-ivory-50"><td className="p-3"><strong className="font-mono text-forest">{row.reservation_code}</strong><div className="mt-1 text-[10px] text-mutedgray">{row.created_at ? new Date(row.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '—'}</div></td><td className="p-3"><strong>{row.guest_name}</strong><div className="text-mutedgray">{row.guest_phone}</div><div className="text-mutedgray">{row.adults} dewasa, {row.children} anak</div></td><td className="p-3 whitespace-nowrap">{row.check_in}<br />→ {row.check_out}</td><td className="p-3">{row.room_number}<div className="text-mutedgray">{row.room_type}</div></td><td className="p-3">{reservationStatusLabel(row.status)}</td><td className="p-3">{paymentStatusLabel(row.payment_status)}<div className="text-mutedgray">{row.payment_method}</div></td><td className="p-3 text-right font-semibold">{formatPrice(row.total_idr, 'IDR')}</td><td className="p-3 text-right font-semibold">{formatPrice(row.paid_this_month_idr, 'IDR')}</td></tr>) : <tr><td colSpan={8} className="p-8 text-center text-mutedgray">Tidak ada reservasi terkait periode ini.</td></tr>}</tbody>
+                            </table>
+                          </div>
+                          <p className="mt-3 text-[10px] text-mutedgray">Laporan mempertahankan reservasi dibatalkan sebagai histori. Angka pendapatan hanya menghitung pembayaran berstatus lunas; pembayaran yang dikembalikan tidak dihitung sebagai pendapatan.</p>
+                        </>
+                      ) : <div className="py-12 text-center text-sm text-mutedgray">Laporan belum tersedia.</div>}
+                    </div>
+                  </section>
+                </div>
+              )}
 
               {/* Quick Table: Recent Inbound Bookings */}
               <div className="bg-ivory rounded-xl border border-bordercolor shadow-sm p-6">
