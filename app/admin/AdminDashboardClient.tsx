@@ -335,6 +335,64 @@ export default function AdminDashboardClient({
   const [posError, setPosError] = useState('');
   const [restaurantRevenue, setRestaurantRevenue] = useState<any>(null);
   const [restaurantRevenueError, setRestaurantRevenueError] = useState('');
+  const [restaurantReportMonth, setRestaurantReportMonth] = useState(getJakartaDateISO().slice(0, 7));
+  const [restaurantMonthlyReport, setRestaurantMonthlyReport] = useState<any>(null);
+  const [restaurantMonthlyReportLoading, setRestaurantMonthlyReportLoading] = useState(false);
+  const [restaurantMonthlyReportError, setRestaurantMonthlyReportError] = useState('');
+
+  const loadRestaurantMonthlyReport = useCallback(async (month = restaurantReportMonth) => {
+    setRestaurantMonthlyReportLoading(true);
+    setRestaurantMonthlyReportError('');
+    try {
+      const response = await fetch(`/api/admin/restaurant-revenue-report?month=${encodeURIComponent(month)}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || `Gagal memuat laporan restoran (HTTP ${response.status}).`);
+      setRestaurantMonthlyReport(payload);
+    } catch (error) {
+      setRestaurantMonthlyReportError(error instanceof Error ? error.message : 'Gagal memuat laporan restoran.');
+      setRestaurantMonthlyReport(null);
+    } finally {
+      setRestaurantMonthlyReportLoading(false);
+    }
+  }, [restaurantReportMonth]);
+
+  const downloadRestaurantMonthlyCsv = () => {
+    if (!restaurantMonthlyReport) return;
+    const report = restaurantMonthlyReport;
+    const cell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows: unknown[][] = [
+      ['LAPORAN PENDAPATAN BULANAN RESTORAN — HÔTEL LE MÉDINA'],
+      ['Periode', report.month],
+      ['Total transaksi', report.totalOrders],
+      ['Transaksi lunas/diterima', report.paidOrders],
+      ['Pendapatan diterima (IDR)', report.revenueIdr],
+      ['Transaksi pembayaran simulasi', report.simulatedOrders],
+      [],
+      ['Kode pesanan', 'Tanggal', 'Nama pelanggan', 'Sumber', 'Metode pembayaran', 'Status pembayaran', 'Status pesanan', 'Item', 'Total (IDR)', 'Pendapatan diterima (IDR)'],
+      ...(report.orders || []).map((order: any) => [
+        order.order_code, order.created_at, order.customer_name, order.order_source === 'pos' ? 'Kasir POS' : 'Online',
+        order.payment_method, order.payment_status, order.order_status,
+        (order.items || []).map((item: any) => `${item.menu_name} x${item.quantity}`).join('; '),
+        Number(order.total_idr || 0), order.payment_status === 'paid_at_restaurant' ? Number(order.total_idr || 0) : 0,
+      ]),
+    ];
+    const csv = '\uFEFF' + rows.map((row) => row.map(cell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a'); link.href = url; link.download = `le-medina-laporan-restoran-${report.month}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  };
+
+  const printRestaurantMonthlyReport = () => {
+    if (!restaurantMonthlyReport) return;
+    const report = restaurantMonthlyReport;
+    const safe = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const money = (value: unknown) => Math.round(Number(value || 0)).toLocaleString('id-ID');
+    const rows = (report.orders || []).map((order: any) => `<tr><td>${safe(order.order_code)}</td><td>${safe(new Date(order.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }))}</td><td>${safe(order.customer_name)}</td><td>${safe(order.order_source === 'pos' ? 'Kasir POS' : 'Online')}</td><td>${safe(order.payment_method)}</td><td>${safe(order.payment_status)}</td><td>${safe((order.items || []).map((item: any) => `${item.menu_name} x${item.quantity}`).join(', '))}</td><td style="text-align:right">Rp ${money(order.total_idr)}</td><td style="text-align:right">Rp ${money(order.payment_status === 'paid_at_restaurant' ? order.total_idr : 0)}</td></tr>`).join('');
+    const win = window.open('', '_blank', 'width=1200,height=850');
+    if (!win) { setRestaurantMonthlyReportError('Pop-up diblokir. Izinkan pop-up untuk menyimpan laporan sebagai PDF.'); return; }
+    win.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Restoran ${safe(report.month)}</title><style>body{font:12px Arial,sans-serif;color:#18352b;padding:24px}h1{font-size:22px}p{color:#555}.stats{display:flex;gap:12px;margin:20px 0}.stats div{border:1px solid #bbb;padding:12px;flex:1}.stats strong{display:block;font-size:18px;margin-top:8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee;font-size:10px}@media print{body{padding:0}}</style></head><body><h1>Laporan Pendapatan Bulanan Restoran</h1><p>Hôtel Le Médina & Resto · Periode ${safe(report.month)} · Waktu Asia/Jakarta</p><div class="stats"><div>Total transaksi<strong>${Number(report.totalOrders || 0)}</strong></div><div>Transaksi diterima<strong>${Number(report.paidOrders || 0)}</strong></div><div>Pendapatan diterima<strong>Rp ${money(report.revenueIdr)}</strong></div><div>Simulasi belum dihitung<strong>${Number(report.simulatedOrders || 0)}</strong></div></div><p>Hanya pembayaran yang tercatat diterima yang dihitung sebagai pendapatan. Transfer/QRIS simulasi tidak dihitung.</p><table><thead><tr><th>Kode</th><th>Tanggal</th><th>Pelanggan</th><th>Sumber</th><th>Pembayaran</th><th>Status bayar</th><th>Rincian item</th><th>Total</th><th>Pendapatan diterima</th></tr></thead><tbody>${rows || '<tr><td colspan="9">Tidak ada transaksi pada periode ini.</td></tr>'}</tbody></table><script>window.onload=()=>{window.focus();window.print()}</script></body></html>`);
+    win.document.close();
+  };
   const loadRestaurantRevenue = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/restaurant-revenue', { cache: 'no-store' });
@@ -2645,6 +2703,29 @@ export default function AdminDashboardClient({
                 {[['Pendapatan hari ini', restaurantRevenue?.dailyIdr], ['Pendapatan minggu ini', restaurantRevenue?.weeklyIdr], ['Pendapatan bulan ini', restaurantRevenue?.monthlyIdr], ['Total pendapatan tercatat', restaurantRevenue?.totalReceivedIdr]].map(([label, value]: any) => <div key={label} className="rounded-xl border border-bordercolor bg-white p-4 shadow-sm"><p className="text-xs text-mutedgray">{label}</p><p className="mt-2 text-xl font-bold text-forest">{value == null ? 'Memuat…' : formatPrice(Number(value), 'IDR')}</p></div>)}
               </div>
               {restaurantRevenue && <p className="text-xs text-mutedgray">Transaksi tercatat: {restaurantRevenue.totalOrders} · Pembayaran diterima: {restaurantRevenue.paidOrders} · Transfer/QRIS simulasi belum dihitung sebagai pendapatan diterima. Pembaruan otomatis setiap 30 detik.</p>}
+
+              <section className="rounded-xl border border-bordercolor bg-white p-5 shadow-sm space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div><h2 className="font-editorial text-xl font-bold text-forest">Rekap Bulanan Restoran</h2><p className="mt-1 text-xs text-mutedgray">Pilih bulan, lalu unduh laporan transaksi ke CSV atau cetak menjadi PDF.</p></div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label htmlFor="restaurant-report-month" className="text-xs font-semibold text-forest">Bulan</label>
+                    <input id="restaurant-report-month" type="month" value={restaurantReportMonth} onChange={(event) => { setRestaurantReportMonth(event.target.value); setRestaurantMonthlyReport(null); }} className="rounded-lg border border-bordercolor bg-white px-3 py-2 text-sm" />
+                    <button type="button" disabled={!restaurantReportMonth || restaurantMonthlyReportLoading} onClick={() => void loadRestaurantMonthlyReport(restaurantReportMonth)} className="rounded-lg bg-forest-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"><RefreshCw className="mr-1 inline h-3.5 w-3.5"/> {restaurantMonthlyReportLoading ? 'Memuat…' : 'Tampilkan'}</button>
+                  </div>
+                </div>
+                {restaurantMonthlyReportError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">{restaurantMonthlyReportError}</p>}
+                {restaurantMonthlyReport && <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg bg-ivory-50 p-3"><p className="text-xs text-mutedgray">Pendapatan diterima</p><p className="mt-1 text-lg font-bold text-forest">{formatPrice(Number(restaurantMonthlyReport.revenueIdr || 0), 'IDR')}</p></div>
+                    <div className="rounded-lg bg-ivory-50 p-3"><p className="text-xs text-mutedgray">Total transaksi</p><p className="mt-1 text-lg font-bold text-forest">{restaurantMonthlyReport.totalOrders}</p></div>
+                    <div className="rounded-lg bg-ivory-50 p-3"><p className="text-xs text-mutedgray">Pembayaran diterima</p><p className="mt-1 text-lg font-bold text-forest">{restaurantMonthlyReport.paidOrders}</p></div>
+                  </div>
+                  <p className="text-xs text-mutedgray">Pembayaran transfer/QRIS simulasi tidak dihitung sebagai pendapatan diterima. Sumber transaksi POS dan online ditampilkan terpisah di laporan.</p>
+                  <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadRestaurantMonthlyCsv} className="rounded-lg border border-bordercolor bg-white px-4 py-2.5 text-xs font-bold text-forest"><Download className="mr-2 inline h-4 w-4"/>Unduh CSV</button><button type="button" onClick={printRestaurantMonthlyReport} className="rounded-lg bg-forest-900 px-4 py-2.5 text-xs font-bold text-white"><Printer className="mr-2 inline h-4 w-4"/>Cetak / Simpan PDF</button></div>
+                  <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs"><thead><tr className="border-b border-bordercolor text-mutedgray"><th className="p-2">Tanggal</th><th className="p-2">Kode</th><th className="p-2">Pelanggan</th><th className="p-2">Sumber</th><th className="p-2">Status bayar</th><th className="p-2 text-right">Total</th><th className="p-2 text-right">Pendapatan diterima</th></tr></thead><tbody>{(restaurantMonthlyReport.orders || []).map((order: any) => <tr key={order.id} className="border-b border-bordercolor"><td className="p-2">{new Date(order.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}</td><td className="p-2 font-semibold">{order.order_code}</td><td className="p-2">{order.customer_name}</td><td className="p-2">{order.order_source === 'pos' ? 'Kasir POS' : 'Online'}</td><td className="p-2">{order.payment_status}</td><td className="p-2 text-right">{formatPrice(Number(order.total_idr || 0), 'IDR')}</td><td className="p-2 text-right">{formatPrice(order.payment_status === 'paid_at_restaurant' ? Number(order.total_idr || 0) : 0, 'IDR')}</td></tr>)}</tbody></table></div>
+                </>}
+              </section>
+
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
                 <section className="rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
                   <h2 className="font-editorial text-xl font-bold text-forest">Pilih menu</h2><p className="mb-4 mt-1 text-xs text-mutedgray">Klik Tambah untuk memasukkan item ke transaksi kasir.</p>
