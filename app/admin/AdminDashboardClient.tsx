@@ -1868,8 +1868,7 @@ export default function AdminDashboardClient({
             </button>
             )}
 
-            {isSuperAdminView && (
-            {currentUser?.role === 'super_admin' && currentRole === 'super_admin' && (
+            {isSuperAdminView && currentUser?.role === 'super_admin' && (
               <button
                 type="button"
                 onClick={() => setActiveTab('gallery')}
@@ -1882,17 +1881,18 @@ export default function AdminDashboardClient({
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-gold text-charcoal font-bold shadow'
-                  : 'text-ivory-200 hover:bg-forest-800'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Pengaturan Sistem</span>
-            </button>
+            {isSuperAdminView && currentUser?.role === 'super_admin' && (
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                  activeTab === 'settings'
+                    ? 'bg-gold text-charcoal font-bold shadow'
+                    : 'text-ivory-200 hover:bg-forest-800'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Pengaturan Sistem</span>
+              </button>
             )}
           </div>
         </aside>
