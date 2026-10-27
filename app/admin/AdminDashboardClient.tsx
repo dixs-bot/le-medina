@@ -323,6 +323,9 @@ export default function AdminDashboardClient({
   >('overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
 
+  // Declare restaurant menu state before POS calculations that depend on it.
+  const [menuItems, setMenuItems] = useState<RestaurantMenuItem[]>(initialMenuItems);
+
   const [posCart, setPosCart] = useState<Record<string, number>>({});
   const [posCustomerName, setPosCustomerName] = useState('');
   const [posPaymentMethod, setPosPaymentMethod] = useState<'cash' | 'transfer_dummy' | 'qris_dummy'>('cash');
@@ -504,7 +507,6 @@ export default function AdminDashboardClient({
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
 
   // Restaurant CMS data is refreshed from Supabase when the tab opens and after each mutation.
-  const [menuItems, setMenuItems] = useState<RestaurantMenuItem[]>(initialMenuItems);
   const [menuCategories, setMenuCategories] = useState<RestaurantCategory[]>(categories);
   const [menuEditorOpen, setMenuEditorOpen] = useState(false);
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
