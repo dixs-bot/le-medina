@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { RestaurantCategory, RestaurantMenuItem } from '../lib/types';
 import { formatPrice } from '../lib/utils';
-import { Utensils, Sparkles, Leaf, Check, MessageSquare } from 'lucide-react';
-import RestaurantOrdering from './RestaurantOrdering';
+import { Utensils, Sparkles, Leaf, Check, MessageSquare, ShoppingBag } from 'lucide-react';
 
 interface RestaurantSectionProps {
   categories: RestaurantCategory[];
@@ -146,7 +145,11 @@ export default function RestaurantSection({
         </div>
         )}
 
-        <RestaurantOrdering menuItems={menuItems} />
+        <div className="mb-14 flex justify-center">
+          <a href="/pesan-makanan" className="inline-flex items-center gap-2 rounded-md bg-gold px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-charcoal shadow-lg transition hover:brightness-110">
+            <ShoppingBag className="h-4 w-4" /> Pesan Makanan Online
+          </a>
+        </div>
 
         {/* WhatsApp Reservation Box */}
         <div className="bg-gradient-to-r from-forest-900 to-forest-800 rounded-xl p-8 border border-gold/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
