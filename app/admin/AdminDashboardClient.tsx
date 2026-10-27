@@ -405,7 +405,7 @@ export default function AdminDashboardClient({
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
     'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'waterparkOnline' | 'settings'
-  >('overview');
+  >(currentUser?.role === 'restaurant_cashier' ? 'pos' : currentUser?.role === 'content_editor' ? 'menu' : currentUser?.role === 'waterpark_cashier' ? 'waterpark' : 'overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
   useEffect(() => {
     if (activeTab !== 'waterparkOnline') return;
@@ -1620,11 +1620,21 @@ export default function AdminDashboardClient({
   };
 
   // Role permissions helpers
-  const canManageReservasi =
-    currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'reservation_staff';
-  const canManageContent =
-    currentRole === 'super_admin' || currentRole === 'admin' || currentRole === 'content_editor';
-  const canManageRoomCatalog = currentRole === 'super_admin' || currentRole === 'admin';
+  const isSuperAdminView = currentRole === 'super_admin';
+  const canSeeReception = isSuperAdminView || currentRole === 'receptionist_staff' || currentRole === 'reservation_staff' || currentRole === 'admin';
+  const canSeeRestaurant = isSuperAdminView || currentRole === 'restaurant_cashier' || currentRole === 'content_editor';
+  const canSeeWaterpark = isSuperAdminView || currentRole === 'waterpark_cashier';
+  const canManageReservasi = canSeeReception;
+  const canManageContent = canSeeRestaurant;
+  const canManageRoomCatalog = isSuperAdminView || currentRole === 'receptionist_staff' || currentRole === 'reservation_staff' || currentRole === 'admin';
+  const firstTabForRole = (role: Role): 'overview' | 'pos' | 'waterpark' | 'menu' => role === 'restaurant_cashier' ? 'pos' : role === 'waterpark_cashier' ? 'waterpark' : role === 'content_editor' ? 'menu' : 'overview';
+  useEffect(() => {
+    const allowed = currentRole === 'super_admin' ? ['overview','reservations','rooms','rates','vouchers','pos','orders','menu','waterpark','waterparkOnline','settings']
+      : currentRole === 'restaurant_cashier' ? ['pos','orders','menu'] : currentRole === 'content_editor' ? ['menu']
+      : currentRole === 'waterpark_cashier' ? ['waterpark','waterparkOnline']
+      : ['overview','reservations','rooms','vouchers'];
+    if (!allowed.includes(activeTab)) setActiveTab(firstTabForRole(currentRole));
+  }, [currentRole, activeTab]);
 
   return (
     <div className="min-h-screen bg-ivory text-charcoal flex flex-col">
@@ -1670,7 +1680,7 @@ export default function AdminDashboardClient({
             <div className="flex items-center gap-2">
               <span className="text-xs text-ivory-300 hidden md:inline">Simulasi RBAC:</span>
               <div className="flex bg-forest-900 rounded p-1 border border-forest-800 text-xs">
-                {(['super_admin', 'admin', 'reservation_staff', 'content_editor'] as Role[]).map(
+                {(['super_admin', 'receptionist_staff', 'restaurant_cashier', 'waterpark_cashier'] as Role[]).map(
                   (role) => (
                     <button
                       key={role}
@@ -1717,6 +1727,7 @@ export default function AdminDashboardClient({
               Menu Navigasi
             </span>
 
+            {canSeeReception && (
             <button
               onClick={() => setActiveTab('overview')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1728,7 +1739,9 @@ export default function AdminDashboardClient({
               <LayoutDashboard className="w-4 h-4" />
               <span>Ringkasan Dashboard</span>
             </button>
+            )}
 
+            {canSeeReception && (
             <button
               onClick={() => setActiveTab('reservations')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1745,7 +1758,9 @@ export default function AdminDashboardClient({
                 {reservations.length}
               </span>
             </button>
+            )}
 
+            {canSeeReception && (
             <button
               onClick={() => setActiveTab('rooms')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1757,7 +1772,9 @@ export default function AdminDashboardClient({
               <BedDouble className="w-4 h-4" />
               <span>Kamar & Inventaris</span>
             </button>
+            )}
 
+            {isSuperAdminView && (
             <button
               onClick={() => setActiveTab('rates')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1769,7 +1786,9 @@ export default function AdminDashboardClient({
               <DollarSign className="w-4 h-4" />
               <span>Tarif & Ketentuan</span>
             </button>
+            )}
 
+            {canSeeReception && (
             <button
               onClick={() => setActiveTab('vouchers')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1781,7 +1800,9 @@ export default function AdminDashboardClient({
               <Percent className="w-4 h-4" />
               <span>Voucher & Promo</span>
             </button>
+            )}
 
+            {(isSuperAdminView || currentRole === 'restaurant_cashier') && (
             <button
               onClick={() => setActiveTab('pos')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1791,7 +1812,9 @@ export default function AdminDashboardClient({
               <DollarSign className="w-4 h-4" />
               <span>Kasir Offline / POS</span>
             </button>
+            )}
 
+            {(isSuperAdminView || currentRole === 'restaurant_cashier') && (
             <button
               onClick={() => setActiveTab('orders')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1801,7 +1824,9 @@ export default function AdminDashboardClient({
               <ClipboardList className="w-4 h-4" />
               <span>Pesanan</span>
             </button>
+            )}
 
+            {canSeeRestaurant && (
             <button
               onClick={() => setActiveTab('menu')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1813,7 +1838,9 @@ export default function AdminDashboardClient({
               <UtensilsCrossed className="w-4 h-4" />
               <span>Menu Restoran</span>
             </button>
+            )}
 
+            {canSeeWaterpark && (
             <button
               onClick={() => setActiveTab('waterpark')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1823,7 +1850,9 @@ export default function AdminDashboardClient({
               <Users className="w-4 h-4" />
               <span>Mini Waterpark</span>
             </button>
+            )}
 
+            {canSeeWaterpark && (
             <button
               type="button"
               onClick={() => setActiveTab('waterparkOnline')}
@@ -1836,7 +1865,9 @@ export default function AdminDashboardClient({
               <ClipboardList className="w-4 h-4" />
               <span>Pesanan Tiket Online</span>
             </button>
+            )}
 
+            {isSuperAdminView && (
             <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -1848,6 +1879,7 @@ export default function AdminDashboardClient({
               <Settings className="w-4 h-4" />
               <span>Pengaturan Sistem</span>
             </button>
+            )}
           </div>
         </aside>
 
@@ -3257,7 +3289,7 @@ export default function AdminDashboardClient({
             <div className="space-y-6 animate-fadeIn max-w-3xl">
               <div>
                 <h1 className="font-editorial text-3xl font-bold text-forest mb-1">
-                  Operasional & Pengaturan Sistem
+                  Pengaturan Sistem (Super Admin)
                 </h1>
                 <p className="text-xs text-mutedgray">
                   Konfigurasi nomor kontak WhatsApp, alamat hotel, dan jam operasional check-in / check-out.
@@ -3435,9 +3467,9 @@ export default function AdminDashboardClient({
                     <div>
                       <label className="mb-1 block text-xs font-semibold">Hak akses</label>
                       <select value={newAdminRole} onChange={(event) => setNewAdminRole(event.target.value as Role)} className="w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm">
-                        <option value="admin">Admin Operasional — kamar, tarif, reservasi, menu, pengaturan</option>
-                        <option value="reservation_staff">Resepsionis — reservasi & operasional meja depan</option>
-                        <option value="content_editor">Editor Konten — menu & konten</option>
+                        <option value="receptionist_staff">Staf Resepsionis — dashboard, reservasi, kamar, voucher</option>
+                        <option value="restaurant_cashier">Kasir Restoran — POS, pesanan, menu restoran</option>
+                        <option value="waterpark_cashier">Kasir Waterpark — loket tiket & pesanan tiket online</option>
                       </select>
                     </div>
                     <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

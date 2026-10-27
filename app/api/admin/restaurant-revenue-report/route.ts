@@ -19,7 +19,7 @@ function monthBounds(month: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAdminAuth(req, ['super_admin', 'admin', 'reservation_staff']);
+  const auth = await requireAdminAuth(req, ['restaurant_cashier']);
   if ('response' in auth) return auth.response;
   if (!supabaseAdmin || !isSupabaseAdminConfigured) {
     return NextResponse.json({ error: 'Supabase service role belum dikonfigurasi.' }, { status: 503, headers: noStore });

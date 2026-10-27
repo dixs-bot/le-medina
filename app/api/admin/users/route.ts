@@ -6,8 +6,8 @@ import type { Role } from '../../../../lib/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-const CREATABLE_ROLES: Role[] = ['admin', 'reservation_staff', 'content_editor'];
-const ROLE_PRIORITY: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+const CREATABLE_ROLES: Role[] = ['receptionist_staff', 'restaurant_cashier', 'waterpark_cashier'];
+const ROLE_PRIORITY: Role[] = ['super_admin', 'receptionist_staff', 'restaurant_cashier', 'waterpark_cashier', 'admin', 'reservation_staff', 'content_editor'];
 function dbUnavailable() {
   return NextResponse.json({ error: 'Manajemen akun admin memerlukan SUPABASE_SERVICE_ROLE_KEY dan migrasi nomor 14.' }, { status: 503 });
 }
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const roleMap = new Map<string, Role[]>();
   for (const item of rolesResult.data || []) {
     const assigned = roleMap.get(item.user_id) || [];
-    if (['super_admin', 'admin', 'reservation_staff', 'content_editor'].includes(item.role)) assigned.push(item.role as Role);
+    if (['super_admin', 'admin', 'reservation_staff', 'content_editor', 'receptionist_staff', 'restaurant_cashier', 'waterpark_cashier'].includes(item.role)) assigned.push(item.role as Role);
     roleMap.set(item.user_id, assigned);
   }
   const audit = auditResult.data || [];
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   if (fullName.length < 2) return NextResponse.json({ error: 'Nama staf minimal 2 karakter.' }, { status: 400 });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Alamat email tidak valid.' }, { status: 400 });
   if (password.length < 10 || password.length > 128) return NextResponse.json({ error: 'Kata sandi awal minimal 10 karakter.' }, { status: 400 });
-  if (!CREATABLE_ROLES.includes(role)) return NextResponse.json({ error: 'Role hanya boleh Admin Operasional, Resepsionis, atau Editor Konten. Super Admin tidak dibuat dari formulir ini.' }, { status: 400 });
+  if (!CREATABLE_ROLES.includes(role)) return NextResponse.json({ error: 'Pilih salah satu divisi: Staf Resepsionis, Kasir Restoran, atau Kasir Waterpark. Super Admin tidak dibuat dari formulir ini.' }, { status: 400 });
 
   let authUserId: string | null = null;
   let profileId: string | null = null;

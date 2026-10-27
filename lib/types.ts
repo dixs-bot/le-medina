@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'admin' | 'reservation_staff' | 'content_editor';
+export type Role = 'super_admin' | 'admin' | 'reservation_staff' | 'content_editor' | 'receptionist_staff' | 'restaurant_cashier' | 'waterpark_cashier';
 
 export interface Profile {
   id: string;

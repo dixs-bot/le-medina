@@ -15,7 +15,7 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
 };
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MENU_BUCKET = 'restaurant-menu';
-const MANAGE_ROLES = ['super_admin', 'admin', 'content_editor'] as const;
+const MANAGE_ROLES = ['restaurant_cashier', 'content_editor'] as const;
 
 function dbUnavailable() {
   return NextResponse.json(

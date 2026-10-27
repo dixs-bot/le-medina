@@ -24,7 +24,7 @@ function databaseUnavailable() {
 // GET /api/admin/walk-in-reservations?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD
 // Returns rooms available for the exact date range, not just rooms free today.
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff']);
+  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff', 'receptionist_staff']);
   if ('response' in authResult) return authResult.response;
   if (!isSupabaseConfigured || !isSupabaseAdminConfigured || !supabaseAdmin) return databaseUnavailable();
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/walk-in-reservations - creates a fixed-room booking transactionally.
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff']);
+  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff', 'receptionist_staff']);
   if ('response' in authResult) return authResult.response;
   if (!isSupabaseConfigured || !isSupabaseAdminConfigured || !supabaseAdmin) return databaseUnavailable();
 

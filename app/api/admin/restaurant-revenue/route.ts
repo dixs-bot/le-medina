@@ -15,7 +15,7 @@ function plusDays(value: string, days: number) { const d = new Date(`${value}T00
 function start(value: string) { return new Date(`${value}T00:00:00+07:00`).getTime(); }
 function inRange(value: string, a: number, b: number) { const t = new Date(value).getTime(); return Number.isFinite(t) && t >= a && t < b; }
 export async function GET(req: NextRequest) {
-  const auth = await requireAdminAuth(req, ['super_admin', 'admin', 'reservation_staff']);
+  const auth = await requireAdminAuth(req, ['restaurant_cashier']);
   if ('response' in auth) return auth.response;
   if (!supabaseAdmin || !isSupabaseAdminConfigured) return NextResponse.json({ error: 'Supabase service role belum dikonfigurasi.' }, { status: 503, headers: noStore });
   try {

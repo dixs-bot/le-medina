@@ -7,7 +7,7 @@ import { isSupabaseAdminConfigured, isSupabaseConfigured, supabaseAdmin } from '
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const MANAGE_ROLES = ['super_admin', 'admin', 'content_editor'] as const;
+const MANAGE_ROLES = ['admin', 'receptionist_staff'] as const;
 const VOUCHER_BUCKET = 'voucher-images';
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {

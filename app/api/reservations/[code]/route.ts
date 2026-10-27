@@ -75,6 +75,7 @@ export async function PATCH(
     'super_admin',
     'admin',
     'reservation_staff',
+    'receptionist_staff',
   ]);
 
   if ('response' in authResult) {

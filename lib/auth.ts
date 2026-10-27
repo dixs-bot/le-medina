@@ -26,6 +26,9 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   admin: 30,
   reservation_staff: 20,
   content_editor: 10,
+  receptionist_staff: 20,
+  restaurant_cashier: 20,
+  waterpark_cashier: 20,
 };
 
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {
@@ -39,6 +42,8 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'rooms:manage',
     'settings:manage',
     'users:manage',
+    'waterpark:manage',
+    'restaurant:manage',
   ],
   admin: [
     'reservations:read',
@@ -55,13 +60,10 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'rooms:read',
     'rates:read',
   ],
-  content_editor: [
-    'content:read',
-    'content:write',
-    'rooms:read',
-    'rates:read',
-    'settings:manage',
-  ],
+  content_editor: ['content:read', 'content:write'],
+  receptionist_staff: ['reservations:read', 'reservations:write', 'rooms:read', 'rates:read'],
+  restaurant_cashier: ['restaurant:read', 'restaurant:write'],
+  waterpark_cashier: ['waterpark:read', 'waterpark:write'],
 };
 
 export function hasPermission(role: Role, permission: string): boolean {
@@ -187,7 +189,7 @@ export async function getAuthenticatedAdmin(
         const { data: assignedRoles, error: rolesError } = await supabaseAdmin
           .from('user_roles').select('role').eq('user_id', profile.id);
         if (rolesError || !assignedRoles?.length) return null;
-        const rolePriority: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+        const rolePriority: Role[] = ['super_admin', 'admin', 'receptionist_staff', 'restaurant_cashier', 'waterpark_cashier', 'reservation_staff', 'content_editor'];
         const liveRole = rolePriority.find((role) => assignedRoles.some((record) => record.role === role));
         if (!liveRole) return null;
         return {
@@ -219,7 +221,7 @@ export async function getAuthenticatedAdmin(
           .limit(1)
           .maybeSingle();
 
-        const allowedRoles: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor'];
+        const allowedRoles: Role[] = ['super_admin', 'admin', 'reservation_staff', 'content_editor', 'receptionist_staff', 'restaurant_cashier', 'waterpark_cashier'];
         if (roleError || !roleData || !allowedRoles.includes(roleData.role as Role)) return null;
         const profile = Array.isArray((roleData as any).profiles) ? (roleData as any).profiles[0] : (roleData as any).profiles;
 

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const HOTEL_TIME_ZONE = 'Asia/Jakarta';
-const ALLOWED_ROLES = ['admin', 'reservation_staff'] as const;
+const ALLOWED_ROLES = ['admin', 'reservation_staff', 'receptionist_staff'] as const;
 
 type PaymentRow = {
   id: string;

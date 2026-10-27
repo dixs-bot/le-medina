@@ -96,7 +96,7 @@ async function updateRate(body: Record<string, unknown>, request: NextRequest, a
 }
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin']);
+  const authResult = await requireAdminAuth(request, ['admin', 'receptionist_staff', 'reservation_staff']);
   if ('response' in authResult) return authResult.response;
   if (!isSupabaseConfigured || !isSupabaseAdminConfigured || !supabaseAdmin) return databaseUnavailable();
 
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin']);
+  const authResult = await requireAdminAuth(request, ['admin', 'receptionist_staff', 'reservation_staff']);
   if ('response' in authResult) return authResult.response;
   if (!isSupabaseConfigured || !isSupabaseAdminConfigured || !supabaseAdmin) return databaseUnavailable();
 

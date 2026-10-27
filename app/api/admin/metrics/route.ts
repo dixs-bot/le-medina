@@ -3,7 +3,7 @@ import { requireAdminAuth } from '../../../../lib/auth';
 import { getAdminMetrics } from '../../../../lib/data/store';
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff']);
+  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff', 'receptionist_staff']);
   if ('response' in authResult) return authResult.response;
 
   try {

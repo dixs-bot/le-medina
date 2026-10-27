@@ -4,7 +4,7 @@ import { isSupabaseAdminConfigured, supabaseAdmin } from '../../../../lib/supaba
 
 export const dynamic = 'force-dynamic';
 const noStore = { 'Cache-Control': 'no-store' };
-const roles = ['super_admin', 'admin', 'reservation_staff'] as const;
+const roles = ['waterpark_cashier'] as const;
 
 function rupiah(value: unknown) {
   const n = Number(value);
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAdminAuth(req, ['super_admin', 'admin']);
+  const auth = await requireAdminAuth(req, [...roles]);
   if ('response' in auth) return auth.response;
   if (!supabaseAdmin || !isSupabaseAdminConfigured) return NextResponse.json({ error: 'Supabase service role belum dikonfigurasi.' }, { status: 503, headers: noStore });
   try {

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     'super_admin',
     'admin',
     'reservation_staff',
+    'receptionist_staff',
   ]);
 
   if ('response' in authResult) {

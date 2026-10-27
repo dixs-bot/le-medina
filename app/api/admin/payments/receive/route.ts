@@ -8,7 +8,7 @@ import {
 } from '../../../../../lib/supabaseClient';
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff']);
+  const authResult = await requireAdminAuth(request, ['admin', 'reservation_staff', 'receptionist_staff']);
   if ('response' in authResult) return authResult.response;
 
   if (!isSupabaseConfigured || !isSupabaseAdminConfigured || !supabaseAdmin) {

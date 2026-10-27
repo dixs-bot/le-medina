@@ -14,7 +14,7 @@ function cleanText(value: unknown, maxLength: number): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAuth(request, ['admin', 'content_editor']);
+  const auth = await requireAdminAuth(request, ['super_admin']);
   if ('response' in auth) return auth.response;
   if (!isSupabaseAdminConfigured) return NextResponse.json({ error: 'Pengaturan memerlukan SUPABASE_SERVICE_ROLE_KEY di environment server.' }, { status: 503 });
   try {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAdminAuth(request, ['admin', 'content_editor']);
+  const auth = await requireAdminAuth(request, ['super_admin']);
   if ('response' in auth) return auth.response;
   if (!isSupabaseAdminConfigured) return NextResponse.json({ error: 'Pengaturan memerlukan SUPABASE_SERVICE_ROLE_KEY di environment server.' }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;

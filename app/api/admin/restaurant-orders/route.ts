@@ -2,7 +2,7 @@ import { NextRequest,NextResponse } from 'next/server';
 import { requireAdminAuth } from '../../../../lib/auth';
 import { isSupabaseAdminConfigured,supabaseAdmin } from '../../../../lib/supabaseClient';
 export const dynamic='force-dynamic';
-const roles=['super_admin','admin','reservation_staff'] as const;
+const roles=['restaurant_cashier'] as const;
 export async function GET(req:NextRequest){
  const auth=await requireAdminAuth(req,[...roles]); if('response' in auth)return auth.response;
  if(!supabaseAdmin||!isSupabaseAdminConfigured)return NextResponse.json({error:'Supabase service role belum dikonfigurasi.'},{status:503});

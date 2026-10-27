@@ -4,7 +4,7 @@ import { isSupabaseAdminConfigured, supabaseAdmin } from '../../../../lib/supaba
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers });
-const roles = ['super_admin', 'admin', 'reservation_staff'] as const;
+const roles = ['waterpark_cashier'] as const;
 
 export async function GET(req: NextRequest) {
   const auth = await requireAdminAuth(req, [...roles]); if ('response' in auth) return auth.response;

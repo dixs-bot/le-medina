@@ -4,7 +4,7 @@ import { isSupabaseAdminConfigured, supabaseAdmin } from '../../../../lib/supaba
 
 export const dynamic = 'force-dynamic';
 const noStore = { 'Cache-Control': 'no-store' };
-const roles = ['super_admin', 'admin', 'reservation_staff'] as const;
+const roles = ['restaurant_cashier'] as const;
 
 function makeCode() {
   return `POS${new Date().toISOString().slice(2, 10).replace(/-/g, '')}${Math.floor(1000 + Math.random() * 9000)}`;
