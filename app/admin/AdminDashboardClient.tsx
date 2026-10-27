@@ -55,6 +55,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import type { AdminUser } from '../../lib/auth';
+import AdminGalleryManager from '../../components/AdminGalleryManager';
 
 interface AdminDashboardClientProps {
   initialMetrics: AdminMetrics;
@@ -404,7 +405,7 @@ export default function AdminDashboardClient({
 
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'waterparkOnline' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'waterparkOnline' | 'gallery' | 'settings'
   >(currentUser?.role === 'restaurant_cashier' ? 'pos' : currentUser?.role === 'content_editor' ? 'menu' : currentUser?.role === 'waterpark_cashier' ? 'waterpark' : 'overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
   useEffect(() => {
@@ -1868,6 +1869,19 @@ export default function AdminDashboardClient({
             )}
 
             {isSuperAdminView && (
+            {currentUser?.role === 'super_admin' && currentRole === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('gallery')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                  activeTab === 'gallery' ? 'bg-gold text-charcoal font-bold shadow' : 'text-ivory-200 hover:bg-forest-800'
+                }`}
+              >
+                <ImagePlus className="w-4 h-4" />
+                <span>Galeri Foto</span>
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
@@ -3282,6 +3296,11 @@ export default function AdminDashboardClient({
                 </section>
               </div>
             </div>
+          )}
+
+          {/* SUPER ADMIN ONLY: CUSTOMER WEBSITE GALLERY CMS */}
+          {activeTab === 'gallery' && currentUser?.role === 'super_admin' && currentRole === 'super_admin' && (
+            <AdminGalleryManager />
           )}
 
           {/* TAB 6: SITE & OPERATIONS SETTINGS */}
