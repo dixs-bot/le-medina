@@ -319,7 +319,7 @@ export default function AdminDashboardClient({
   };
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'settings'
   >('overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
 
@@ -339,6 +339,67 @@ export default function AdminDashboardClient({
   const [restaurantMonthlyReport, setRestaurantMonthlyReport] = useState<any>(null);
   const [restaurantMonthlyReportLoading, setRestaurantMonthlyReportLoading] = useState(false);
   const [restaurantMonthlyReportError, setRestaurantMonthlyReportError] = useState('');
+  const [waterparkData, setWaterparkData] = useState<any>({ tickets: [], transactions: [], revenue: { daily: 0, weekly: 0, monthly: 0 } });
+  const [waterparkLoading, setWaterparkLoading] = useState(false);
+  const [waterparkError, setWaterparkError] = useState('');
+  const [waterparkMessage, setWaterparkMessage] = useState('');
+  const [waterparkAdultCount, setWaterparkAdultCount] = useState(0);
+  const [waterparkChildCount, setWaterparkChildCount] = useState(0);
+  const [waterparkCustomerName, setWaterparkCustomerName] = useState('');
+  const [waterparkPaymentMethod, setWaterparkPaymentMethod] = useState<'cash' | 'transfer_dummy' | 'qris_dummy'>('cash');
+  const [waterparkNote, setWaterparkNote] = useState('');
+  const [waterparkSaving, setWaterparkSaving] = useState(false);
+  const [waterparkEditPrices, setWaterparkEditPrices] = useState(false);
+  const [waterparkAdultPriceDraft, setWaterparkAdultPriceDraft] = useState('25000');
+  const [waterparkChildPriceDraft, setWaterparkChildPriceDraft] = useState('2000');
+  const waterparkMoney = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+  const loadWaterparkData = useCallback(async () => {
+    setWaterparkLoading(true); setWaterparkError('');
+    try {
+      const response = await fetch('/api/admin/waterpark', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal memuat data Mini Waterpark.');
+      setWaterparkData(payload);
+      const adult = (payload.tickets || []).find((t: any) => t.ticket_type === 'adult');
+      const child = (payload.tickets || []).find((t: any) => t.ticket_type === 'child');
+      if (adult) setWaterparkAdultPriceDraft(String(adult.price_idr));
+      if (child) setWaterparkChildPriceDraft(String(child.price_idr));
+    } catch (error) { setWaterparkError(error instanceof Error ? error.message : 'Gagal memuat data Mini Waterpark.'); }
+    finally { setWaterparkLoading(false); }
+  }, []);
+  useEffect(() => {
+    if (activeTab !== 'waterpark') return;
+    void loadWaterparkData();
+    const timer = window.setInterval(() => void loadWaterparkData(), 30000);
+    return () => window.clearInterval(timer);
+  }, [activeTab, loadWaterparkData]);
+  const submitWaterparkTransaction = async () => {
+    setWaterparkError(''); setWaterparkMessage('');
+    if (waterparkCustomerName.trim().length < 2) { setWaterparkError('Nama konsumen minimal 2 karakter.'); return; }
+    if (waterparkAdultCount + waterparkChildCount < 1) { setWaterparkError('Masukkan jumlah tiket dewasa atau anak-anak.'); return; }
+    setWaterparkSaving(true);
+    try {
+      const response = await fetch('/api/admin/waterpark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        customerName: waterparkCustomerName, adultCount: waterparkAdultCount, childCount: waterparkChildCount, paymentMethod: waterparkPaymentMethod, note: waterparkNote,
+      }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Transaksi waterpark gagal disimpan.');
+      setWaterparkMessage(`Transaksi berhasil disimpan. Total ${waterparkMoney(Number(payload.transaction.total_idr || 0))}.`);
+      setWaterparkCustomerName(''); setWaterparkAdultCount(0); setWaterparkChildCount(0); setWaterparkNote('');
+      await loadWaterparkData();
+    } catch (error) { setWaterparkError(error instanceof Error ? error.message : 'Transaksi waterpark gagal disimpan.'); }
+    finally { setWaterparkSaving(false); }
+  };
+  const saveWaterparkPrices = async () => {
+    setWaterparkError(''); setWaterparkMessage('');
+    try {
+      const response = await fetch('/api/admin/waterpark', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adultPrice: Number(waterparkAdultPriceDraft), childPrice: Number(waterparkChildPriceDraft) }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Harga tiket gagal disimpan.');
+      setWaterparkEditPrices(false); setWaterparkMessage('Harga tiket berhasil diperbarui.'); await loadWaterparkData();
+    } catch (error) { setWaterparkError(error instanceof Error ? error.message : 'Harga tiket gagal disimpan.'); }
+  };
+
 
   const loadRestaurantMonthlyReport = useCallback(async (month = restaurantReportMonth) => {
     setRestaurantMonthlyReportLoading(true);
@@ -1663,6 +1724,16 @@ export default function AdminDashboardClient({
             </button>
 
             <button
+              onClick={() => setActiveTab('waterpark')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                activeTab === 'waterpark' ? 'bg-gold text-charcoal font-bold shadow' : 'text-ivory-200 hover:bg-forest-800'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Mini Waterpark</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
                 activeTab === 'settings'
@@ -2935,6 +3006,77 @@ export default function AdminDashboardClient({
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: MINI WATERPARK TICKETING & REVENUE */}
+          {activeTab === 'waterpark' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                  <h1 className="font-editorial text-3xl font-bold text-forest mb-1">Mini Waterpark</h1>
+                  <p className="text-xs text-mutedgray">Penjualan tiket loket, pengaturan harga, dan pendapatan divisi waterpark.</p>
+                </div>
+                <button type="button" onClick={() => void loadWaterparkData()} className="px-4 py-2 rounded border bg-white text-sm flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Segarkan</button>
+              </div>
+              {waterparkError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{waterparkError}</div>}
+              {waterparkMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{waterparkMessage}</div>}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { label: 'Pendapatan Hari Ini', value: waterparkData.revenue?.daily || 0 },
+                  { label: 'Pendapatan Minggu Ini', value: waterparkData.revenue?.weekly || 0 },
+                  { label: 'Pendapatan Bulan Ini', value: waterparkData.revenue?.monthly || 0 },
+                ].map((card) => <div key={card.label} className="rounded-xl border border-[#e6dfd2] bg-white p-5 shadow-sm">
+                  <p className="text-xs uppercase tracking-wider text-mutedgray">{card.label}</p>
+                  <p className="mt-2 text-2xl font-bold text-forest">{waterparkMoney(Number(card.value))}</p>
+                  <p className="mt-1 text-xs text-mutedgray">Hanya pembayaran yang ditandai lunas</p>
+                </div>)}
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <section className="rounded-xl border border-[#e6dfd2] bg-white p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div><h2 className="font-editorial text-xl font-bold text-forest">Loket Penjualan Tiket</h2><p className="text-xs text-mutedgray">Masukkan jumlah pengunjung; total dihitung otomatis.</p></div>
+                    <button type="button" onClick={() => setWaterparkEditPrices((v) => !v)} className="rounded border px-3 py-2 text-xs flex items-center gap-1"><Pencil className="w-3.5 h-3.5" /> Edit Harga</button>
+                  </div>
+                  {waterparkEditPrices && <div className="rounded-lg bg-[#f8f5ee] p-4 space-y-3">
+                    <p className="text-sm font-semibold">Atur harga tiket (Rp)</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="text-xs">Tiket Dewasa<input type="number" min="1" value={waterparkAdultPriceDraft} onChange={(e) => setWaterparkAdultPriceDraft(e.target.value)} className="mt-1 w-full rounded border p-2 text-sm" /></label>
+                      <label className="text-xs">Tiket Anak-anak<input type="number" min="1" value={waterparkChildPriceDraft} onChange={(e) => setWaterparkChildPriceDraft(e.target.value)} className="mt-1 w-full rounded border p-2 text-sm" /></label>
+                    </div>
+                    <button type="button" onClick={() => void saveWaterparkPrices()} className="rounded bg-forest px-4 py-2 text-sm text-white">Simpan Harga</button>
+                  </div>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { key: 'adult', label: 'Tiket Dewasa', count: waterparkAdultCount, setCount: setWaterparkAdultCount, price: Number((waterparkData.tickets || []).find((t: any) => t.ticket_type === 'adult')?.price_idr || 25000) },
+                      { key: 'child', label: 'Tiket Anak-anak', count: waterparkChildCount, setCount: setWaterparkChildCount, price: Number((waterparkData.tickets || []).find((t: any) => t.ticket_type === 'child')?.price_idr || 2000) },
+                    ].map((ticket) => <div key={ticket.key} className="rounded-xl border border-[#e6dfd2] bg-[#faf7f0] p-4">
+                      <div className="flex items-center justify-between gap-2"><h3 className="font-editorial text-lg font-bold text-forest">{ticket.label}</h3><span className="rounded-full bg-[#e8dfcc] px-2 py-1 text-xs">{waterparkMoney(ticket.price)}</span></div>
+                      <label className="mt-3 block text-xs">Jumlah tiket
+                        <input type="number" min="0" max="1000" value={ticket.count} onChange={(e) => ticket.setCount(Math.max(0, Math.min(1000, Number(e.target.value) || 0)))} className="mt-1 w-full rounded border p-2 text-base" />
+                      </label>
+                      <p className="mt-2 text-sm text-mutedgray">Subtotal: <strong className="text-forest">{waterparkMoney(ticket.count * ticket.price)}</strong></p>
+                    </div>)}
+                  </div>
+                  <div className="rounded-lg bg-forest p-4 text-white"><p className="text-xs uppercase tracking-wider text-white/70">Total Pembayaran</p><p className="text-2xl font-bold">{waterparkMoney(waterparkAdultCount * Number((waterparkData.tickets || []).find((t: any) => t.ticket_type === 'adult')?.price_idr || 25000) + waterparkChildCount * Number((waterparkData.tickets || []).find((t: any) => t.ticket_type === 'child')?.price_idr || 2000))}</p></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="text-xs">Nama konsumen<input value={waterparkCustomerName} onChange={(e) => setWaterparkCustomerName(e.target.value)} placeholder="Nama pembeli" className="mt-1 w-full rounded border p-2 text-sm" /></label>
+                    <label className="text-xs">Metode pembayaran<select value={waterparkPaymentMethod} onChange={(e) => setWaterparkPaymentMethod(e.target.value as any)} className="mt-1 w-full rounded border p-2 text-sm"><option value="cash">Tunai / Cash</option><option value="transfer_dummy">Transfer (Simulasi)</option><option value="qris_dummy">QRIS (Simulasi)</option></select></label>
+                  </div>
+                  <label className="block text-xs">Catatan (opsional)<input value={waterparkNote} onChange={(e) => setWaterparkNote(e.target.value)} placeholder="Contoh: rombongan keluarga" className="mt-1 w-full rounded border p-2 text-sm" /></label>
+                  <button type="button" disabled={waterparkSaving} onClick={() => void submitWaterparkTransaction()} className="w-full rounded bg-[#1f7a55] px-4 py-3 font-semibold text-white disabled:opacity-50">{waterparkSaving ? 'Menyimpan...' : 'Simpan Transaksi Tiket'}</button>
+                  <p className="text-xs text-mutedgray">Cash tercatat lunas. Transfer dan QRIS masih simulasi dan tidak dihitung sebagai pendapatan diterima.</p>
+                </section>
+                <section className="rounded-xl border border-[#e6dfd2] bg-white p-5">
+                  <div className="mb-4 flex items-center justify-between"><div><h2 className="font-editorial text-xl font-bold text-forest">Transaksi Terbaru</h2><p className="text-xs text-mutedgray">Diperbarui otomatis setiap 30 detik.</p></div>{waterparkLoading && <Loader2 className="h-4 w-4 animate-spin" />}</div>
+                  {!waterparkData.transactions?.length ? <p className="rounded bg-[#faf7f0] p-4 text-sm text-mutedgray">Belum ada transaksi waterpark.</p> : <div className="space-y-3 max-h-[620px] overflow-y-auto">
+                    {waterparkData.transactions.slice(0, 30).map((tx: any) => <div key={tx.id} className="rounded-lg border p-3">
+                      <div className="flex justify-between gap-3"><div><p className="font-semibold text-forest">{tx.customer_name}</p><p className="text-xs text-mutedgray">{new Date(tx.created_at).toLocaleString('id-ID')} · {tx.adult_count} dewasa · {tx.child_count} anak</p></div><p className="font-bold text-forest">{waterparkMoney(Number(tx.total_idr || 0))}</p></div>
+                      <p className="mt-1 text-xs text-mutedgray">Pembayaran: {tx.payment_method === 'cash' ? 'Cash' : tx.payment_method === 'transfer_dummy' ? 'Transfer (simulasi)' : 'QRIS (simulasi)'} · {tx.payment_status === 'paid' ? 'Lunas' : 'Belum diverifikasi'}</p>
+                    </div>)}
+                  </div>}
+                </section>
               </div>
             </div>
           )}
