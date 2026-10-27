@@ -52,6 +52,7 @@ import {
   Activity,
   Download,
   Printer,
+  ClipboardList,
 } from 'lucide-react';
 import type { AdminUser } from '../../lib/auth';
 
@@ -297,10 +298,31 @@ export default function AdminDashboardClient({
 }: AdminDashboardClientProps) {
   const router = useRouter();
 
+  const [restaurantOrders, setRestaurantOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState('');
+  const loadRestaurantOrders = useCallback(async () => {
+    setOrdersLoading(true); setOrdersError('');
+    try { const response = await fetch('/api/admin/restaurant-orders', { cache: 'no-store' }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Gagal memuat pesanan.'); setRestaurantOrders(payload.orders || []); }
+    catch (e) { setOrdersError(e instanceof Error ? e.message : 'Gagal memuat pesanan.'); }
+    finally { setOrdersLoading(false); }
+  }, []);
+  const updateRestaurantOrderStatus = async (id: string, status: string) => {
+    try { const response = await fetch('/api/admin/restaurant-orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Gagal mengubah status.'); await loadRestaurantOrders(); }
+    catch (e) { setOrdersError(e instanceof Error ? e.message : 'Gagal mengubah status.'); }
+  };
+  const downloadRestaurantReceipt = (order: any) => {
+    const money = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(v || 0));
+    const lines = (order.restaurant_order_items || []).map((item: any) => `<tr><td>${String(item.menu_name).replace(/[<>]/g, '')}<br>${item.quantity} x ${money(item.unit_price_idr)}</td><td style="text-align:right">${money(item.line_total_idr)}</td></tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Struk ${order.order_code}</title><style>@page{size:80mm auto;margin:3mm}body{font:12px monospace;width:74mm;margin:0;color:#000}h2,p{text-align:center;margin:5px 0}hr{border:0;border-top:1px dashed #000}table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}</style></head><body><h2>HÔTEL LE MÉDINA</h2><p>STRUK PESANAN RESTORAN</p><hr><p style="text-align:left">Kode: ${order.order_code}<br>Tanggal: ${new Date(order.created_at).toLocaleString('id-ID')}<br>Nama: ${String(order.customer_name).replace(/[<>]/g, '')}<br>${order.is_hotel_guest ? 'Kamar: '+String(order.room_number||'-').replace(/[<>]/g, '') : 'Pengunjung restoran'}<br>Pembayaran: ${order.payment_method==='restaurant'?'Bayar di restoran':order.payment_method==='qris_dummy'?'QRIS (SIMULASI)':'Transfer (SIMULASI)'}</p><hr><table>${lines}</table><hr><p class="total" style="text-align:right">TOTAL ${money(order.total_idr)}</p><p>Terima kasih</p><p>Le Medina Singkawang</p></body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `struk-${order.order_code}.html`; a.click(); URL.revokeObjectURL(url);
+  };
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'menu' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'orders' | 'menu' | 'settings'
   >('overview');
+  useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
+
 
   // RBAC active role
   const [currentRole, setCurrentRole] = useState<Role>(currentUser?.role || 'super_admin');
@@ -1473,6 +1495,16 @@ export default function AdminDashboardClient({
             </button>
 
             <button
+              onClick={() => setActiveTab('orders')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                activeTab === 'orders' ? 'bg-gold text-charcoal font-bold shadow' : 'text-ivory-200 hover:bg-forest-800'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Pesanan</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('menu')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
                 activeTab === 'menu'
@@ -2544,6 +2576,15 @@ export default function AdminDashboardClient({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: RESTAURANT ORDERS */}
+          {activeTab === 'orders' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h1 className="font-editorial text-3xl font-bold text-forest mb-1">Pesanan Restoran</h1><p className="text-xs text-mutedgray">Pantau pesanan pelanggan, ubah status, dan unduh struk thermal 80 mm.</p></div><button type="button" onClick={() => void loadRestaurantOrders()} className="rounded-lg border border-bordercolor bg-white px-4 py-2.5 text-xs font-semibold"><RefreshCw className="inline h-4 w-4 mr-2"/>Segarkan</button></div>
+              {ordersError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{ordersError}</div>}
+              {ordersLoading ? <p className="text-sm text-mutedgray">Memuat pesanan...</p> : restaurantOrders.length === 0 ? <div className="rounded-xl border border-bordercolor bg-white p-10 text-center"><ClipboardList className="mx-auto h-8 w-8 text-mutedgray"/><h2 className="mt-3 font-bold text-forest">Belum ada pesanan restoran</h2><p className="mt-1 text-sm text-mutedgray">Pesanan pelanggan yang berhasil disimpan akan muncul di sini.</p></div> : <div className="space-y-4">{restaurantOrders.map((order:any)=><article key={order.id} className="rounded-xl border border-bordercolor bg-white p-5 shadow-sm"><div className="flex flex-col sm:flex-row sm:justify-between gap-3"><div><div className="font-bold text-forest">{order.order_code} · {order.customer_name}</div><p className="text-xs text-mutedgray mt-1">{new Date(order.created_at).toLocaleString('id-ID')} · {order.is_hotel_guest ? `Kamar ${order.room_number||'-'}` : 'Pengunjung restoran'}</p></div><div className="font-bold text-forest">{formatPrice(Number(order.total_idr), 'IDR')}</div></div><div className="my-3 border-t border-bordercolor pt-3 text-sm">{(order.restaurant_order_items||[]).map((item:any)=><div key={item.id} className="flex justify-between gap-3 py-1"><span>{item.menu_name} × {item.quantity}</span><span>{formatPrice(Number(item.line_total_idr),'IDR')}</span></div>)}</div>{order.customer_note && <p className="mb-3 rounded bg-ivory-50 p-2 text-xs">Catatan: {order.customer_note}</p>}<div className="flex flex-wrap items-center gap-2"><label className="text-xs">Status <select value={order.order_status} onChange={e=>void updateRestaurantOrderStatus(order.id,e.target.value)} className="ml-2 rounded border border-bordercolor bg-white px-2 py-2"><option value="received">Diterima</option><option value="processing">Diproses</option><option value="ready">Sudah siap</option><option value="completed">Selesai</option><option value="cancelled">Dibatalkan</option></select></label><span className="text-xs text-mutedgray">Pembayaran: {order.payment_method==='restaurant'?'Bayar di restoran':order.payment_method==='qris_dummy'?'QRIS (simulasi)':'Transfer (simulasi)'}</span><button type="button" onClick={()=>downloadRestaurantReceipt(order)} className="rounded bg-forest-900 px-3 py-2 text-xs font-bold text-white"><Download className="inline h-3.5 w-3.5 mr-1"/>Unduh Struk POS</button></div></article>)}</div>}
             </div>
           )}
 

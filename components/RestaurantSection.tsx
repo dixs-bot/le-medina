@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { RestaurantCategory, RestaurantMenuItem } from '../lib/types';
 import { formatPrice } from '../lib/utils';
 import { Utensils, Sparkles, Leaf, Check, MessageSquare } from 'lucide-react';
+import RestaurantOrdering from './RestaurantOrdering';
 
 interface RestaurantSectionProps {
   categories: RestaurantCategory[];
@@ -144,6 +145,8 @@ export default function RestaurantSection({
           ))}
         </div>
         )}
+
+        <RestaurantOrdering menuItems={menuItems} />
 
         {/* WhatsApp Reservation Box */}
         <div className="bg-gradient-to-r from-forest-900 to-forest-800 rounded-xl p-8 border border-gold/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
