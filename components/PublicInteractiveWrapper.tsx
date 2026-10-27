@@ -16,7 +16,6 @@ import FacilitiesSection from './FacilitiesSection';
 import OffersSection from './OffersSection';
 import GallerySection from './GallerySection';
 import ReviewsSection from './ReviewsSection';
-import ContactBookingSection from './ContactBookingSection';
 
 interface PublicInteractiveWrapperProps {
   roomTypes: RoomType[];
@@ -45,33 +44,29 @@ export default function PublicInteractiveWrapper({
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
+
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-  const [checkIn, setCheckIn] = useState(formatDateInput(today));
-  const [checkOut, setCheckOut] = useState(formatDateInput(tomorrow));
-
-  const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(
-    undefined
-  );
-  const [appliedPromoCode, setAppliedPromoCode] = useState<string | undefined>(
-    undefined
-  );
+  const [checkIn] = useState(formatDateInput(today));
+  const [checkOut] = useState(formatDateInput(tomorrow));
 
   const handleSelectRoomForBooking = (room: RoomType) => {
-    setPreselectedRoomId(room.id);
-    const bookingElem = document.getElementById('booking');
-    if (bookingElem) {
-      bookingElem.scrollIntoView({ behavior: 'smooth' });
-    }
+    const params = new URLSearchParams({
+      roomTypeId: room.id,
+      checkIn,
+      checkOut,
+    });
+    window.location.href = `/reservasi?${params.toString()}`;
   };
 
   const handleApplyPromoCode = (code: string) => {
-    setAppliedPromoCode(code);
-    const bookingElem = document.getElementById('booking');
-    if (bookingElem) {
-      bookingElem.scrollIntoView({ behavior: 'smooth' });
-    }
+    const params = new URLSearchParams({
+      promoCode: code.trim().toUpperCase(),
+      checkIn,
+      checkOut,
+    });
+    window.location.href = `/reservasi?${params.toString()}`;
   };
 
   return (
@@ -99,17 +94,6 @@ export default function PublicInteractiveWrapper({
       <GallerySection images={galleryImages} />
 
       <ReviewsSection reviews={reviews} />
-
-      <ContactBookingSection
-        roomTypes={roomTypes}
-        checkIn={checkIn}
-        checkOut={checkOut}
-        onCheckInChange={setCheckIn}
-        onCheckOutChange={setCheckOut}
-        preselectedRoomId={preselectedRoomId}
-        appliedPromoCode={appliedPromoCode}
-        whatsappNumber={whatsappNumber}
-      />
     </>
   );
 }
