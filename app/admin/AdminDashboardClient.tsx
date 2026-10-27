@@ -319,9 +319,51 @@ export default function AdminDashboardClient({
   };
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'orders' | 'menu' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'settings'
   >('overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
+
+  const [posCart, setPosCart] = useState<Record<string, number>>({});
+  const [posCustomerName, setPosCustomerName] = useState('');
+  const [posPaymentMethod, setPosPaymentMethod] = useState<'cash' | 'transfer_dummy' | 'qris_dummy'>('cash');
+  const [posNote, setPosNote] = useState('');
+  const [posSaving, setPosSaving] = useState(false);
+  const [posMessage, setPosMessage] = useState('');
+  const [posError, setPosError] = useState('');
+  const [restaurantRevenue, setRestaurantRevenue] = useState<any>(null);
+  const [restaurantRevenueError, setRestaurantRevenueError] = useState('');
+  const loadRestaurantRevenue = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/restaurant-revenue', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Gagal memuat pendapatan restoran.');
+      setRestaurantRevenue(payload); setRestaurantRevenueError('');
+    } catch (error) { setRestaurantRevenueError(error instanceof Error ? error.message : 'Gagal memuat pendapatan restoran.'); }
+  }, []);
+  useEffect(() => {
+    if (activeTab !== 'pos') return;
+    void loadRestaurantRevenue();
+    const timer = window.setInterval(() => void loadRestaurantRevenue(), 30000);
+    return () => window.clearInterval(timer);
+  }, [activeTab, loadRestaurantRevenue]);
+  const posTotal = menuItems.reduce((sum, item) => sum + (posCart[item.id] || 0) * Math.round(Number(item.price_cents) / 100), 0);
+  const submitPosOrder = async () => {
+    setPosError(''); setPosMessage('');
+    if (posCustomerName.trim().length < 2) { setPosError('Nama pembeli wajib diisi minimal 2 karakter.'); return; }
+    const items = Object.entries(posCart).filter(([, quantity]) => quantity > 0).map(([id, quantity]) => ({ id, quantity }));
+    if (!items.length) { setPosError('Pilih minimal satu menu terlebih dahulu.'); return; }
+    setPosSaving(true);
+    try {
+      const response = await fetch('/api/admin/restaurant-pos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: posCustomerName, paymentMethod: posPaymentMethod, note: posNote, items }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Transaksi gagal disimpan.');
+      setPosMessage(`Transaksi ${payload.order.order_code} berhasil disimpan. Total ${formatPrice(Number(payload.order.total_idr), 'IDR')}.`);
+      setPosCart({}); setPosCustomerName(''); setPosNote('');
+      await loadRestaurantRevenue();
+      if (posPaymentMethod === 'cash') await loadRestaurantOrders();
+    } catch (error) { setPosError(error instanceof Error ? error.message : 'Transaksi gagal disimpan.'); }
+    finally { setPosSaving(false); }
+  };
 
 
   // RBAC active role
@@ -1495,6 +1537,16 @@ export default function AdminDashboardClient({
             </button>
 
             <button
+              onClick={() => setActiveTab('pos')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                activeTab === 'pos' ? 'bg-gold text-charcoal font-bold shadow' : 'text-ivory-200 hover:bg-forest-800'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              <span>Kasir Offline / POS</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('orders')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
                 activeTab === 'orders' ? 'bg-gold text-charcoal font-bold shadow' : 'text-ivory-200 hover:bg-forest-800'
@@ -2576,6 +2628,36 @@ export default function AdminDashboardClient({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: RESTAURANT POS / CASHIER */}
+          {activeTab === 'pos' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><h1 className="font-editorial text-3xl font-bold text-forest mb-1">Kasir Offline / POS Restoran</h1><p className="text-xs text-mutedgray">Catat transaksi pengunjung langsung. Menu diambil dari CMS restoran dan transaksi disimpan ke Supabase.</p></div>
+                <button type="button" onClick={() => { void loadRestaurantRevenue(); void reloadRestaurantMenu(); }} className="rounded-lg border border-bordercolor bg-white px-4 py-2.5 text-xs font-semibold"><RefreshCw className="inline h-4 w-4 mr-2"/>Segarkan laporan</button>
+              </div>
+              {restaurantRevenueError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{restaurantRevenueError} Pastikan migrasi POS sudah dijalankan.</div>}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[['Pendapatan hari ini', restaurantRevenue?.dailyIdr], ['Pendapatan minggu ini', restaurantRevenue?.weeklyIdr], ['Pendapatan bulan ini', restaurantRevenue?.monthlyIdr], ['Total pendapatan tercatat', restaurantRevenue?.totalReceivedIdr]].map(([label, value]: any) => <div key={label} className="rounded-xl border border-bordercolor bg-white p-4 shadow-sm"><p className="text-xs text-mutedgray">{label}</p><p className="mt-2 text-xl font-bold text-forest">{value == null ? 'Memuat…' : formatPrice(Number(value), 'IDR')}</p></div>)}
+              </div>
+              {restaurantRevenue && <p className="text-xs text-mutedgray">Transaksi tercatat: {restaurantRevenue.totalOrders} · Pembayaran diterima: {restaurantRevenue.paidOrders} · Transfer/QRIS simulasi belum dihitung sebagai pendapatan diterima. Pembaruan otomatis setiap 30 detik.</p>}
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+                <section className="rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
+                  <h2 className="font-editorial text-xl font-bold text-forest">Pilih menu</h2><p className="mb-4 mt-1 text-xs text-mutedgray">Klik Tambah untuk memasukkan item ke transaksi kasir.</p>
+                  {menuItems.filter(item => item.is_available).length === 0 ? <p className="rounded-lg bg-ivory-50 p-4 text-sm text-mutedgray">Belum ada menu tersedia. Tambahkan menu melalui Menu Restoran terlebih dahulu.</p> : <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{menuItems.filter(item => item.is_available).map(item => <article key={item.id} className="flex gap-3 rounded-lg border border-bordercolor p-3">{item.image_url ? <img src={item.image_url} alt={item.name} className="h-20 w-20 rounded-md object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-md bg-ivory-100 text-xs text-mutedgray">Tanpa foto</div>}<div className="min-w-0 flex-1"><p className="font-semibold text-forest">{item.name}</p><p className="mt-1 text-sm text-gold-700">{formatPrice(Math.round(Number(item.price_cents) / 100), 'IDR')}</p><button type="button" onClick={() => setPosCart(current => ({ ...current, [item.id]: Math.min(99, (current[item.id] || 0) + 1) }))} className="mt-2 rounded bg-forest-900 px-3 py-1.5 text-xs font-bold text-white">+ Tambah</button></div></article>)}</div>}
+                </section>
+                <section className="h-fit rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
+                  <h2 className="font-editorial text-xl font-bold text-forest">Transaksi saat ini</h2>
+                  <div className="my-4 space-y-3">{Object.entries(posCart).filter(([, quantity]) => quantity > 0).map(([id, quantity]) => { const item = menuItems.find(menu => menu.id === id); if (!item) return null; const unit = Math.round(Number(item.price_cents) / 100); return <div key={id} className="flex items-center gap-2 border-b border-bordercolor pb-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-forest">{item.name}</p><p className="text-xs text-mutedgray">{formatPrice(unit, 'IDR')} × {quantity}</p></div><div className="flex items-center gap-1"><button type="button" aria-label={`Kurangi ${item.name}`} onClick={() => setPosCart(current => { const next = { ...current }; if ((next[id] || 0) <= 1) delete next[id]; else next[id] -= 1; return next; })} className="h-7 w-7 rounded border border-bordercolor">−</button><span className="w-5 text-center text-sm">{quantity}</span><button type="button" aria-label={`Tambah ${item.name}`} onClick={() => setPosCart(current => ({ ...current, [id]: Math.min(99, (current[id] || 0) + 1) }))} className="h-7 w-7 rounded border border-bordercolor">+</button></div></div>})}</div>
+                  <div className="mb-4 flex justify-between border-t border-bordercolor pt-3 font-bold text-forest"><span>Total</span><span>{formatPrice(posTotal, 'IDR')}</span></div>
+                  <div className="space-y-3"><label className="block text-xs font-semibold text-forest">Nama pembeli *<input value={posCustomerName} onChange={event => setPosCustomerName(event.target.value)} maxLength={120} className="mt-1.5 w-full rounded-lg border border-bordercolor px-3 py-2.5 text-sm font-normal" placeholder="Nama pelanggan" /></label><label className="block text-xs font-semibold text-forest">Metode pembayaran<select value={posPaymentMethod} onChange={event => setPosPaymentMethod(event.target.value as any)} className="mt-1.5 w-full rounded-lg border border-bordercolor bg-white px-3 py-2.5 text-sm font-normal"><option value="cash">Cash / Tunai</option><option value="transfer_dummy">Transfer bank (simulasi)</option><option value="qris_dummy">QRIS (simulasi)</option></select></label><label className="block text-xs font-semibold text-forest">Catatan (opsional)<textarea value={posNote} onChange={event => setPosNote(event.target.value)} maxLength={500} rows={2} className="mt-1.5 w-full rounded-lg border border-bordercolor px-3 py-2 text-sm font-normal" placeholder="Catatan transaksi" /></label></div>
+                  {posError && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-700">{posError}</p>}{posMessage && <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">{posMessage}</p>}
+                  <button type="button" disabled={posSaving || posTotal <= 0} onClick={() => void submitPosOrder()} className="mt-4 w-full rounded-lg bg-forest-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{posSaving ? 'Menyimpan transaksi…' : 'Simpan transaksi'}</button>
+                  <p className="mt-2 text-[11px] text-mutedgray">Cash langsung tercatat sebagai pembayaran diterima. Transfer dan QRIS hanya simulasi sampai integrasi resmi tersedia.</p>
+                </section>
+              </div>
             </div>
           )}
 
