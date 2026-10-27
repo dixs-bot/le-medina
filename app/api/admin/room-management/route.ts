@@ -175,39 +175,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, room: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    if (action === 'delete_room') {
+    if (action === 'delete_room_with_history') {
       const roomId = sanitizeString(body.room_id, 64);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId)) {
         return NextResponse.json({ error: 'ID kamar tidak valid.' }, { status: 400 });
       }
 
-      const { data: room, error: roomError } = await supabaseAdmin!
-        .from('rooms').select('id,room_number').eq('id', roomId).maybeSingle();
-      if (roomError) throw roomError;
-      if (!room) return NextResponse.json({ error: 'Kamar tidak ditemukan atau sudah dihapus.' }, { status: 404 });
-
-      // Preserve reservation history: do not delete rooms referenced by reservations or nightly allocations.
-      const [{ data: reservationRefs, error: reservationError }, { data: nightRefs, error: nightError }] = await Promise.all([
-        supabaseAdmin!.from('reservations').select('id').eq('assigned_room_id', roomId).limit(1),
-        supabaseAdmin!.from('reservation_nights').select('id').eq('room_id', roomId).limit(1),
-      ]);
-      if (reservationError) throw reservationError;
-      if (nightError) throw nightError;
-      if ((reservationRefs && reservationRefs.length > 0) || (nightRefs && nightRefs.length > 0)) {
+      // Run the destructive operation inside a database transaction via RPC:
+      // delete reservations assigned to this physical room, cascade their related
+      // reservation items/events/nights, then delete the room itself.
+      const { data, error } = await supabaseAdmin!.rpc('admin_delete_room_with_history', {
+        p_room_id: roomId,
+      });
+      if (error) {
+        console.error('[admin/room-management] room deletion failed:', error.code || 'unknown', error.message || 'Database request failed');
         return NextResponse.json({
-          error: `Kamar ${room.room_number} tidak dapat dihapus karena sudah terhubung dengan data reservasi atau riwayat alokasi. Untuk menjaga laporan dan histori, ubah status kamar menjadi pemeliharaan/ditutup jika tidak digunakan lagi.`,
-        }, { status: 409 });
+          error: 'Gagal menghapus kamar beserta riwayat terkait. Pastikan migrasi admin_delete_room_with_history sudah dijalankan di Supabase.',
+        }, { status: 500 });
       }
-
-      const { error: deleteError } = await supabaseAdmin!.from('rooms').delete().eq('id', roomId);
-      if (deleteError) {
-        if (deleteError.code === '23503') {
-          return NextResponse.json({ error: 'Kamar masih dipakai oleh data lain sehingga tidak dapat dihapus.' }, { status: 409 });
-        }
-        throw deleteError;
+      const result = data as Record<string, unknown> | null;
+      if (!result?.success) {
+        return NextResponse.json({ error: 'Kamar tidak ditemukan atau penghapusan tidak berhasil.' }, { status: 404 });
       }
-      await writeAdminAudit(request, authResult.user, 'room_deleted', 'room', roomId, { room_number: room.room_number });
-      return NextResponse.json({ success: true, deletedRoomId: roomId }, { headers: { 'Cache-Control': 'no-store' } });
+      await writeAdminAudit(request, authResult.user, 'room_deleted_with_history', 'room', roomId, {
+        room_number: result.room_number,
+        deleted_reservations: Number(result.deleted_reservations || 0),
+        development_only_destructive_action: true,
+      });
+      return NextResponse.json({
+        success: true,
+        roomNumber: result.room_number,
+        deletedReservations: Number(result.deleted_reservations || 0),
+      }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     if (action === 'update_base_price') {

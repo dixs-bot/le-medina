@@ -860,6 +860,40 @@ export default function AdminDashboardClient({
     }
   };
 
+  const handleDeletePhysicalRoom = async (room: Room) => {
+    const confirmation = window.confirm(
+      `PERINGATAN: Hapus kamar ${room.room_number} beserta SELURUH riwayat reservasi yang terhubung?\n\n` +
+      'Data reservasi, item, malam menginap, dan event terkait akan dihapus permanen dari Supabase. Tindakan ini tidak bisa dibatalkan.\n\n' +
+      'Pilih OK hanya jika ini memang data pengembangan.'
+    );
+    if (!confirmation) return;
+
+    setRoomManagementSaving(true);
+    setRoomManagementError(null);
+    setRoomManagementMessage(null);
+    try {
+      const response = await fetch('/api/admin/room-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ action: 'delete_room_with_history', room_id: room.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || `Kamar gagal dihapus (HTTP ${response.status}).`);
+      }
+      setRoomManagementMessage(
+        `Kamar ${payload.roomNumber || room.room_number} berhasil dihapus bersama ${Number(payload.deletedReservations || 0)} riwayat reservasi terkait.`
+      );
+      await reloadRoomManagement();
+      router.refresh();
+    } catch (error) {
+      setRoomManagementError(error instanceof Error ? error.message : 'Gagal menghapus kamar dan riwayat terkait.');
+    } finally {
+      setRoomManagementSaving(false);
+    }
+  };
+
   const handleAddPhysicalRoom = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const saved = await submitRoomManagement({
@@ -867,17 +901,6 @@ export default function AdminDashboardClient({
       floor: Number(newRoomFloor), wing: newRoomWing,
     }, `Kamar ${newRoomNumber.trim().toUpperCase()} berhasil ditambahkan ke inventaris Supabase.`);
     if (saved) setNewRoomNumber('');
-  };
-
-  const handleDeletePhysicalRoom = async (room: Room) => {
-    const confirmed = window.confirm(
-      `Hapus kamar ${room.room_number} dari database? Kamar yang sudah memiliki riwayat reservasi tidak akan bisa dihapus.`
-    );
-    if (!confirmed) return;
-    await submitRoomManagement(
-      { action: 'delete_room', room_id: room.id },
-      `Kamar ${room.room_number} berhasil dihapus dari inventaris Supabase.`
-    );
   };
 
   const handleSaveBasePrice = async (roomType: RoomType) => {
@@ -2386,19 +2409,16 @@ export default function AdminDashboardClient({
                           <span>Tarif Dasar:</span>
                           <strong className="text-gold-700">{roomType ? `${formatPrice(roomType.base_price_cents / 100, 'IDR')}/malam` : '—'}</strong>
                         </div>
-                        {canManageRoomCatalog && (
-                          <div className="flex justify-end border-t border-bordercolor pt-3">
-                            <button
-                              type="button"
-                              disabled={roomManagementSaving}
-                              onClick={() => void handleDeletePhysicalRoom(room)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                            >
-                              {roomManagementSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                              Hapus Kamar
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-end border-t border-bordercolor pt-3">
+                          <button
+                            type="button"
+                            disabled={roomManagementSaving}
+                            onClick={() => void handleDeletePhysicalRoom(room)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Hapus Kamar & Riwayat
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
