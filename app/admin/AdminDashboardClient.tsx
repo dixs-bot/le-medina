@@ -3244,7 +3244,7 @@ export default function AdminDashboardClient({
                   {!waterparkData.transactions?.length ? <p className="rounded bg-[#faf7f0] p-4 text-sm text-mutedgray">Belum ada transaksi waterpark.</p> : <div className="space-y-3 max-h-[620px] overflow-y-auto">
                     {waterparkData.transactions.slice(0, 30).map((tx: any) => <div key={tx.id} className="rounded-lg border p-3">
                       <div className="flex justify-between gap-3"><div><p className="font-semibold text-forest">{tx.customer_name}</p><p className="text-xs text-mutedgray">{new Date(tx.created_at).toLocaleString('id-ID')} · {tx.adult_count} dewasa · {tx.child_count} anak</p></div><p className="font-bold text-forest">{waterparkMoney(Number(tx.total_idr || 0))}</p></div>
-                      <p className="mt-1 text-xs text-mutedgray">Pembayaran: {tx.payment_method === 'cash' ? 'Cash' : tx.payment_method === 'transfer_dummy' ? 'Transfer (simulasi)' : 'QRIS (simulasi)'} · {tx.payment_status === 'paid' ? 'Lunas' : 'Belum diverifikasi'}</p>
+                      <p className="mt-1 text-xs text-mutedgray">{tx.source === 'online' ? 'Pesanan tiket online' : 'Tiket loket'} · Pembayaran: {tx.payment_method === 'cash' ? 'Cash' : tx.payment_method === 'counter' ? 'Bayar di loket' : tx.payment_method === 'transfer_dummy' ? 'Transfer (simulasi)' : 'QRIS (simulasi)'} · {tx.payment_status === 'paid' ? 'Lunas' : tx.payment_status === 'pending_counter' ? 'Menunggu pembayaran loket' : tx.payment_status === 'pending_payment' ? 'Menunggu pembayaran' : 'Belum diverifikasi'}</p>
                     </div>)}
                   </div>}
                 </section>
