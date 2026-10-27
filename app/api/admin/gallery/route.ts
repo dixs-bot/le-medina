@@ -66,8 +66,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, image: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (uploadedPath && supabaseAdmin) await supabaseAdmin.storage.from(BUCKET).remove([uploadedPath]).catch(() => undefined);
-    console.error('[admin/gallery] create failed:', error instanceof Error ? error.message : 'unknown');
-    return NextResponse.json({ error: 'Foto gagal disimpan ke galeri. Periksa tabel gallery_images dan bucket Storage.' }, { status: 500 });
+    // Supabase PostgREST errors are plain objects, not always Error instances.
+    // Log safe diagnostics so production logs reveal the actual database failure.
+    const dbError = error && typeof error === 'object'
+      ? error as { message?: string; code?: string; details?: string; hint?: string }
+      : null;
+    console.error('[admin/gallery] create failed:', {
+      message: error instanceof Error ? error.message : dbError?.message || String(error || 'unknown'),
+      code: dbError?.code || null,
+      details: dbError?.details || null,
+      hint: dbError?.hint || null,
+    });
+    return NextResponse.json({ error: 'Foto gagal disimpan ke galeri. Periksa izin database, tabel gallery_images, dan bucket Storage.' }, { status: 500 });
   }
 }
 
@@ -82,7 +92,12 @@ export async function DELETE(request: NextRequest) {
   if (readError || !image) return NextResponse.json({ error: 'Foto tidak ditemukan.' }, { status: 404 });
   const { error: deleteError } = await supabaseAdmin.from('gallery_images').delete().eq('id', body.id);
   if (deleteError) {
-    console.error('[admin/gallery] delete row failed:', deleteError.message);
+    console.error('[admin/gallery] delete row failed:', {
+      message: deleteError.message,
+      code: deleteError.code,
+      details: deleteError.details,
+      hint: deleteError.hint,
+    });
     return NextResponse.json({ error: 'Foto gagal dihapus dari database.' }, { status: 500 });
   }
   const marker = `/${BUCKET}/`;

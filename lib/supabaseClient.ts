@@ -30,4 +30,4 @@ export const supabaseAdmin: SupabaseClient | null = isSupabaseAdminConfigured
   ? createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
-  : supabase; // Fallback to public client if service role key not provided
+  : null; // Never use the public client for privileged server operations
