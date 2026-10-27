@@ -175,6 +175,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, room: data }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     }
 
+    if (action === 'delete_room') {
+      const roomId = sanitizeString(body.room_id, 64);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId)) {
+        return NextResponse.json({ error: 'ID kamar tidak valid.' }, { status: 400 });
+      }
+
+      const { data: room, error: roomError } = await supabaseAdmin!
+        .from('rooms').select('id,room_number').eq('id', roomId).maybeSingle();
+      if (roomError) throw roomError;
+      if (!room) return NextResponse.json({ error: 'Kamar tidak ditemukan atau sudah dihapus.' }, { status: 404 });
+
+      // Preserve reservation history: do not delete rooms referenced by reservations or nightly allocations.
+      const [{ data: reservationRefs, error: reservationError }, { data: nightRefs, error: nightError }] = await Promise.all([
+        supabaseAdmin!.from('reservations').select('id').eq('assigned_room_id', roomId).limit(1),
+        supabaseAdmin!.from('reservation_nights').select('id').eq('room_id', roomId).limit(1),
+      ]);
+      if (reservationError) throw reservationError;
+      if (nightError) throw nightError;
+      if ((reservationRefs && reservationRefs.length > 0) || (nightRefs && nightRefs.length > 0)) {
+        return NextResponse.json({
+          error: `Kamar ${room.room_number} tidak dapat dihapus karena sudah terhubung dengan data reservasi atau riwayat alokasi. Untuk menjaga laporan dan histori, ubah status kamar menjadi pemeliharaan/ditutup jika tidak digunakan lagi.`,
+        }, { status: 409 });
+      }
+
+      const { error: deleteError } = await supabaseAdmin!.from('rooms').delete().eq('id', roomId);
+      if (deleteError) {
+        if (deleteError.code === '23503') {
+          return NextResponse.json({ error: 'Kamar masih dipakai oleh data lain sehingga tidak dapat dihapus.' }, { status: 409 });
+        }
+        throw deleteError;
+      }
+      await writeAdminAudit(request, authResult.user, 'room_deleted', 'room', roomId, { room_number: room.room_number });
+      return NextResponse.json({ success: true, deletedRoomId: roomId }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     if (action === 'update_base_price') {
       const roomTypeId = sanitizeString(body.room_type_id, 64);
       const price = validPrice(body.price_idr);

@@ -869,6 +869,17 @@ export default function AdminDashboardClient({
     if (saved) setNewRoomNumber('');
   };
 
+  const handleDeletePhysicalRoom = async (room: Room) => {
+    const confirmed = window.confirm(
+      `Hapus kamar ${room.room_number} dari database? Kamar yang sudah memiliki riwayat reservasi tidak akan bisa dihapus.`
+    );
+    if (!confirmed) return;
+    await submitRoomManagement(
+      { action: 'delete_room', room_id: room.id },
+      `Kamar ${room.room_number} berhasil dihapus dari inventaris Supabase.`
+    );
+  };
+
   const handleSaveBasePrice = async (roomType: RoomType) => {
     await submitRoomManagement({
       action: 'update_base_price', room_type_id: roomType.id, price_idr: Number(basePriceDrafts[roomType.id]),
@@ -2375,6 +2386,19 @@ export default function AdminDashboardClient({
                           <span>Tarif Dasar:</span>
                           <strong className="text-gold-700">{roomType ? `${formatPrice(roomType.base_price_cents / 100, 'IDR')}/malam` : '—'}</strong>
                         </div>
+                        {canManageRoomCatalog && (
+                          <div className="flex justify-end border-t border-bordercolor pt-3">
+                            <button
+                              type="button"
+                              disabled={roomManagementSaving}
+                              onClick={() => void handleDeletePhysicalRoom(room)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {roomManagementSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                              Hapus Kamar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
