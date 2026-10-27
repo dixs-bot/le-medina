@@ -317,11 +317,102 @@ export default function AdminDashboardClient({
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Struk ${order.order_code}</title><style>@page{size:80mm auto;margin:3mm}body{font:12px monospace;width:74mm;margin:0;color:#000}h2,p{text-align:center;margin:5px 0}hr{border:0;border-top:1px dashed #000}table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top}.total{font-weight:bold;font-size:14px}</style></head><body><h2>HÔTEL LE MÉDINA</h2><p>STRUK PESANAN RESTORAN</p><hr><p style="text-align:left">Kode: ${order.order_code}<br>Tanggal: ${new Date(order.created_at).toLocaleString('id-ID')}<br>Nama: ${String(order.customer_name).replace(/[<>]/g, '')}<br>${order.is_hotel_guest ? 'Kamar: '+String(order.room_number||'-').replace(/[<>]/g, '') : 'Pengunjung restoran'}<br>Pembayaran: ${order.payment_method==='restaurant'?'Bayar di restoran':order.payment_method==='qris_dummy'?'QRIS (SIMULASI)':'Transfer (SIMULASI)'}</p><hr><table>${lines}</table><hr><p class="total" style="text-align:right">TOTAL ${money(order.total_idr)}</p><p>Terima kasih</p><p>Le Medina Singkawang</p></body></html>`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `struk-${order.order_code}.html`; a.click(); URL.revokeObjectURL(url);
   };
+  // Online waterpark ticket orders are rendered inside this dashboard tab.
+  type WaterparkOnlineOrder = {
+    id: string;
+    order_code: string;
+    validation_code: string;
+    customer_name: string;
+    adult_count: number;
+    child_count: number;
+    total_idr: number;
+    payment_method: string;
+    payment_status: string;
+    order_status: string;
+    note?: string | null;
+    created_at: string;
+    paid_at?: string | null;
+    validated_at?: string | null;
+  };
+  const [wpOnlineOrders, setWpOnlineOrders] = useState<WaterparkOnlineOrder[]>([]);
+  const [wpOnlineCode, setWpOnlineCode] = useState('');
+  const [wpOnlineLoading, setWpOnlineLoading] = useState(false);
+  const [wpOnlineBusy, setWpOnlineBusy] = useState(false);
+  const [wpOnlineError, setWpOnlineError] = useState('');
+  const [wpOnlineMessage, setWpOnlineMessage] = useState('');
+  const loadWpOnlineOrders = useCallback(async () => {
+    setWpOnlineLoading(true);
+    try {
+      const response = await fetch('/api/admin/waterpark-online', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Gagal memuat pesanan tiket online.');
+      setWpOnlineOrders(payload?.orders || []);
+      setWpOnlineError('');
+    } catch (error) {
+      setWpOnlineError(error instanceof Error ? error.message : 'Gagal memuat pesanan tiket online.');
+    } finally {
+      setWpOnlineLoading(false);
+    }
+  }, []);
+  const actWpOnlineOrder = async (validationCode: string, action: 'mark_paid' | 'validate_entry' | 'cancel') => {
+    setWpOnlineBusy(true);
+    setWpOnlineError('');
+    setWpOnlineMessage('');
+    try {
+      const response = await fetch('/api/admin/waterpark-online', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ validationCode, action }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Aksi pesanan tiket gagal.');
+      setWpOnlineMessage(payload?.message || 'Perubahan berhasil disimpan.');
+      setWpOnlineCode('');
+      await loadWpOnlineOrders();
+    } catch (error) {
+      setWpOnlineError(error instanceof Error ? error.message : 'Aksi pesanan tiket gagal.');
+    } finally {
+      setWpOnlineBusy(false);
+    }
+  };
+  const verifyWpOnlineCode = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedCode = wpOnlineCode.trim().toUpperCase();
+    const order = wpOnlineOrders.find((item) => item.validation_code.toUpperCase() === normalizedCode);
+    if (!order) {
+      setWpOnlineError('Kode belum ditemukan. Segarkan daftar pesanan lalu coba kembali.');
+      return;
+    }
+    if (order.payment_status !== 'paid') {
+      setWpOnlineError('Pembayaran belum lunas. Konfirmasi pembayaran terlebih dahulu setelah memastikan dana diterima.');
+      return;
+    }
+    await actWpOnlineOrder(order.validation_code, 'validate_entry');
+  };
+  const wpOnlineMoney = (value: number) => new Intl.NumberFormat('id-ID', {
+    style: 'currency', currency: 'IDR', maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+  const wpOnlinePaymentLabel = (order: WaterparkOnlineOrder) =>
+    order.payment_status === 'paid' ? 'Lunas' : order.payment_method === 'counter' ? 'Bayar di loket' : 'Menunggu verifikasi';
+  const wpOnlineStatusLabel = (status: string) => ({
+    waiting_payment: 'Menunggu pembayaran',
+    waiting_counter: 'Bayar di loket',
+    confirmed: 'Siap divalidasi',
+    used: 'Sudah digunakan',
+    cancelled: 'Dibatalkan',
+  } as Record<string, string>)[status] || status;
+
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'settings'
+    'overview' | 'reservations' | 'rooms' | 'rates' | 'vouchers' | 'pos' | 'orders' | 'menu' | 'waterpark' | 'waterparkOnline' | 'settings'
   >('overview');
   useEffect(() => { if (activeTab === 'orders') void loadRestaurantOrders(); }, [activeTab, loadRestaurantOrders]);
+  useEffect(() => {
+    if (activeTab !== 'waterparkOnline') return;
+    void loadWpOnlineOrders();
+    const timer = window.setInterval(() => void loadWpOnlineOrders(), 15000);
+    return () => window.clearInterval(timer);
+  }, [activeTab, loadWpOnlineOrders]);
 
   // Declare restaurant menu state before POS calculations that depend on it.
   const [menuItems, setMenuItems] = useState<RestaurantMenuItem[]>(initialMenuItems);
@@ -1733,13 +1824,18 @@ export default function AdminDashboardClient({
               <span>Mini Waterpark</span>
             </button>
 
-            <Link
-              href="/admin/waterpark-online"
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium text-ivory-200 hover:bg-forest-800"
+            <button
+              type="button"
+              onClick={() => setActiveTab('waterparkOnline')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
+                activeTab === 'waterparkOnline'
+                  ? 'bg-gold text-charcoal font-bold shadow'
+                  : 'text-ivory-200 hover:bg-forest-800'
+              }`}
             >
               <ClipboardList className="w-4 h-4" />
               <span>Pesanan Tiket Online</span>
-            </Link>
+            </button>
 
             <button
               onClick={() => setActiveTab('settings')}
@@ -3015,6 +3111,73 @@ export default function AdminDashboardClient({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TAB: ONLINE WATERPARK TICKET ORDERS */}
+          {activeTab === 'waterparkOnline' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h1 className="font-editorial mb-1 text-3xl font-bold text-forest">Pesanan Tiket Online</h1>
+                  <p className="text-xs text-mutedgray">Kelola pesanan, konfirmasi pembayaran, dan validasi kode pengunjung tanpa meninggalkan dashboard.</p>
+                </div>
+                <button type="button" onClick={() => void loadWpOnlineOrders()} disabled={wpOnlineLoading} className="rounded-lg border border-bordercolor bg-white px-4 py-2.5 text-xs font-semibold disabled:opacity-50">
+                  <RefreshCw className={`mr-2 inline h-4 w-4 ${wpOnlineLoading ? 'animate-spin' : ''}`} />Segarkan
+                </button>
+              </div>
+              {wpOnlineError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{wpOnlineError}</div>}
+              {wpOnlineMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{wpOnlineMessage}</div>}
+              <section className="rounded-xl border border-bordercolor bg-white p-5 shadow-sm">
+                <h2 className="font-editorial text-xl font-bold text-forest">Validasi Kode Pengunjung</h2>
+                <p className="mt-1 text-xs text-mutedgray">Masukkan kode dari pelanggan. Tiket yang belum lunas atau sudah digunakan tidak boleh masuk.</p>
+                <form onSubmit={verifyWpOnlineCode} className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <input value={wpOnlineCode} onChange={(event) => setWpOnlineCode(event.target.value.toUpperCase())} required maxLength={40} placeholder="Masukkan kode validasi tiket" className="min-w-0 flex-1 rounded-lg border border-bordercolor px-3 py-3 font-mono uppercase tracking-widest" />
+                  <button type="submit" disabled={wpOnlineBusy || wpOnlineLoading} className="rounded-lg bg-forest-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{wpOnlineBusy ? 'Memproses...' : 'Validasi Masuk'}</button>
+                </form>
+              </section>
+              <section className="overflow-hidden rounded-xl border border-bordercolor bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-bordercolor p-5">
+                  <h2 className="font-editorial text-xl font-bold text-forest">Daftar Pesanan</h2>
+                  <span className="text-xs text-mutedgray">{wpOnlineOrders.length} pesanan · refresh otomatis setiap 15 detik</span>
+                </div>
+                {wpOnlineLoading && wpOnlineOrders.length === 0 ? <p className="p-5 text-sm text-mutedgray">Memuat pesanan tiket...</p>
+                  : wpOnlineOrders.length === 0 ? <p className="p-5 text-sm text-mutedgray">Belum ada pesanan tiket online.</p>
+                  : <div className="divide-y divide-bordercolor">
+                    {wpOnlineOrders.map((order) => (
+                      <article key={order.id} className="p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="font-bold text-forest">{order.customer_name} <span className="ml-2 rounded bg-ivory-100 px-2 py-1 text-xs">{order.order_code}</span></div>
+                            <p className="mt-1 text-xs text-mutedgray">{new Date(order.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} · {order.adult_count} dewasa · {order.child_count} anak</p>
+                            <p className="mt-2 text-sm">Kode validasi: <b className="font-mono tracking-widest">{order.validation_code}</b></p>
+                            {order.note && <p className="mt-1 text-sm text-mutedgray">Catatan: {order.note}</p>}
+                          </div>
+                          <div className="sm:text-right">
+                            <div className="text-lg font-bold text-forest">{wpOnlineMoney(order.total_idr)}</div>
+                            <div className="mt-1 text-xs text-mutedgray">{wpOnlinePaymentLabel(order)} · {wpOnlineStatusLabel(order.order_status)}</div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {order.payment_status !== 'paid' && order.order_status !== 'cancelled' && order.order_status !== 'used' && (
+                            <button type="button" disabled={wpOnlineBusy} onClick={() => {
+                              if (window.confirm('Pastikan pembayaran benar-benar diterima sebelum mengonfirmasi. Lanjutkan?')) void actWpOnlineOrder(order.validation_code, 'mark_paid');
+                            }} className="rounded-lg bg-forest-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Konfirmasi Pembayaran</button>
+                          )}
+                          {order.payment_status === 'paid' && order.order_status === 'confirmed' && (
+                            <button type="button" disabled={wpOnlineBusy} onClick={() => void actWpOnlineOrder(order.validation_code, 'validate_entry')} className="rounded-lg bg-gold px-3 py-2 text-xs font-semibold text-charcoal disabled:opacity-50">Validasi Pengunjung</button>
+                          )}
+                          {order.order_status !== 'used' && order.order_status !== 'cancelled' && (
+                            <button type="button" disabled={wpOnlineBusy} onClick={() => {
+                              if (window.confirm('Batalkan pesanan tiket ini?')) void actWpOnlineOrder(order.validation_code, 'cancel');
+                            }} className="rounded-lg border border-red-200 px-3 py-2 text-xs text-red-700 disabled:opacity-50">Batalkan</button>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>}
+              </section>
+              <p className="text-xs text-mutedgray">Transfer/QRIS masih simulasi. Pastikan pembayaran benar-benar diterima sebelum menekan Konfirmasi Pembayaran. Setiap kode tiket hanya dapat divalidasi satu kali.</p>
             </div>
           )}
 
