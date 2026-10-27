@@ -1733,6 +1733,14 @@ export default function AdminDashboardClient({
               <span>Mini Waterpark</span>
             </button>
 
+            <Link
+              href="/admin/waterpark-online"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium text-ivory-200 hover:bg-forest-800"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Pesanan Tiket Online</span>
+            </Link>
+
             <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded text-xs uppercase tracking-wider font-medium transition-all ${
