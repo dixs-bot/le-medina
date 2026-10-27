@@ -1630,7 +1630,7 @@ export default function AdminDashboardClient({
   const canManageRoomCatalog = isSuperAdminView || currentRole === 'receptionist_staff' || currentRole === 'reservation_staff' || currentRole === 'admin';
   const firstTabForRole = (role: Role): 'overview' | 'pos' | 'waterpark' | 'menu' => role === 'restaurant_cashier' ? 'pos' : role === 'waterpark_cashier' ? 'waterpark' : role === 'content_editor' ? 'menu' : 'overview';
   useEffect(() => {
-    const allowed = currentRole === 'super_admin' ? ['overview','reservations','rooms','rates','vouchers','pos','orders','menu','waterpark','waterparkOnline','settings']
+    const allowed = currentRole === 'super_admin' ? ['overview','reservations','rooms','rates','vouchers','pos','orders','menu','waterpark','waterparkOnline','gallery','settings']
       : currentRole === 'restaurant_cashier' ? ['pos','orders','menu'] : currentRole === 'content_editor' ? ['menu']
       : currentRole === 'waterpark_cashier' ? ['waterpark','waterparkOnline']
       : ['overview','reservations','rooms','vouchers'];
